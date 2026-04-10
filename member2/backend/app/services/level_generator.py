@@ -27,6 +27,12 @@ from app.models.schemas import (
     ObjectiveData,
     Position,
 )
+from app.services.quality_score import (
+    DungeonMetrics,
+    calculate_quality_score,
+    DifficultyHysteresis,
+    adjust_for_misconceptions,
+)
 
 
 # ── Topic → Dungeon theme mapping ────────────────────────────────────────

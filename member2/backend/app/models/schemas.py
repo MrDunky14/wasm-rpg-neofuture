@@ -173,3 +173,60 @@ class ProgressHistory(BaseModel):
     records: list[ProgressRecord]
     total_levels_completed: int
     total_bosses_defeated: int
+
+
+# ── Telemetry & Analytics Models ──────────────────────────────────────────
+
+class TelemetryEvent(BaseModel):
+    """Base event for analytics and A/B testing."""
+    event_type: str  # quiz_started, quiz_completed, dungeon_started, dungeon_completed, boss_defeated, etc.
+    student_id: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    session_id: str = Field(default="", description="Unique session identifier")
+    data: dict = Field(default_factory=dict, description="Event-specific metadata")
+
+
+class QuizCompletedEvent(TelemetryEvent):
+    """Fired when student completes quiz."""
+    event_type: str = "quiz_completed"
+    total_score: float
+    topic_scores: dict[str, float]  # {"stack": 0.8, "queue": 0.5, ...}
+    failed_topics: list[str]
+    time_seconds: int
+
+
+class DungeonStartedEvent(TelemetryEvent):
+    """Fired when student enters dungeon."""
+    event_type: str = "dungeon_started"
+    concept: ConceptTopic
+    difficulty: int  # 1=Easy, 2=Medium, 3=Hard
+    level_seed: int
+
+
+class DungeonCompletedEvent(TelemetryEvent):
+    """Fired when student completes or quits dungeon."""
+    event_type: str = "dungeon_completed"
+    concept: ConceptTopic
+    difficulty: int
+    completed: bool
+    time_seconds: int
+    boss_defeated: bool
+    quality_score: float = Field(default=0.0, description="Dungeon quality (0-100)")
+
+
+class BossDefeatedEvent(TelemetryEvent):
+    """Fired when student defeats boss."""
+    event_type: str = "boss_defeated"
+    concept: ConceptTopic
+    correct_answers: int
+    total_questions: int
+    time_seconds: int
+
+
+class KPIMetric(BaseModel):
+    """Computed KPI for student performance on concept."""
+    concept: ConceptTopic
+    accuracy: float  # 0.0-1.0
+    speed: float  # avg seconds per question
+    attempts: int  # number of times attempted
+    mastery_score: float  # weighted: accuracy * (speed_bonus) * (attempts_bonus)

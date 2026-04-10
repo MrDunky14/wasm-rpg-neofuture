@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import close_db
-from app.routes import lesson, level, progress, quiz
+from app.routes import lesson, level, progress, quiz, telemetry
 
 
 @asynccontextmanager
@@ -54,6 +54,7 @@ app.include_router(quiz.router)
 app.include_router(level.router)
 app.include_router(progress.router)
 app.include_router(lesson.router)
+app.include_router(telemetry.router)
 
 
 # ── Health / Root ────────────────────────────────────────────────────────
@@ -70,6 +71,9 @@ async def root():
             "preview": "/api/level/preview",
             "lesson": "/api/lesson/generate",
             "progress": "/api/progress/{student_id}",
+            "telemetry": "/api/telemetry/events",
+            "kpi": "/api/telemetry/kpi/{student_id}",
+            "ab_test": "/api/telemetry/ab-test-status",
             "docs": "/docs",
         },
     }
