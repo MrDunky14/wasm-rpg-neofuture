@@ -48,7 +48,7 @@ export default function Navbar() {
         </div>
 
         <nav className="flex items-center gap-2 pointer-events-auto">
-          <Link to="/" className={navItemClass(pathname === '/')}>
+          <Link to="/map" className={navItemClass(pathname === '/map')}>
             MAP
           </Link>
           <Link to="/quiz" className={navItemClass(pathname === '/quiz')}>
