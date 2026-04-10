@@ -45,22 +45,36 @@ function GameRouteHandler(props: GameRouteProps) {
   const [searchParams] = useSearchParams();
   const [levelFromTopic, setLevelFromTopic] = useState<LevelData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelled = false;
     const topic = searchParams.get('topic');
+    
     if (topic && !props.currentLevel && !levelFromTopic) {
       setIsLoading(true);
+      setLoadError('');
+      
       api.get<LevelData>(`/api/level/prebuilt/${topic}`)
         .then((res) => {
-          setLevelFromTopic(res.data);
-          setIsLoading(false);
+          if (!cancelled) {
+            setLevelFromTopic(res.data);
+            setIsLoading(false);
+          }
         })
         .catch((err) => {
-          console.error('Failed to load level:', err);
-          setIsLoading(false);
+          if (!cancelled) {
+            console.error('Failed to load level:', err);
+            setLoadError('Could not load dungeon. Please try again from the map.');
+            setIsLoading(false);
+          }
         });
     }
+    
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, props.currentLevel, levelFromTopic]);
 
   const level = props.currentLevel || levelFromTopic;
@@ -71,6 +85,21 @@ function GameRouteHandler(props: GameRouteProps) {
         <div className="game-panel rounded-xl p-6 text-center border border-white/[0.08]">
           <h2 className="font-pixel text-[11px] tracking-wider text-secondary mb-4">LOADING DUNGEON</h2>
           <p className="text-sm text-gray-300">Preparing your adventure...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="game-panel rounded-xl p-6 text-center border border-danger/20">
+          <h2 className="font-pixel text-[11px] tracking-wider text-danger mb-4">LOAD FAILED</h2>
+          <p className="text-sm text-gray-300 mb-4">{loadError}</p>
+          <div className="flex gap-3 justify-center">
+            <button className="pixel-btn" onClick={() => navigate('/map')}>Back To Map</button>
+            <button className="pixel-btn-ghost" onClick={() => navigate('/quiz')}>New Quiz</button>
+          </div>
         </div>
       </div>
     );
@@ -88,7 +117,7 @@ function GameRouteHandler(props: GameRouteProps) {
     );
   }
 
-  const studentId = props.entry?.studentId || window.localStorage.getItem('wasm_rpg_student_id') || 'anonymous';
+  const studentId = props.entry?.studentId || (typeof window !== 'undefined' ? window.localStorage.getItem('wasm_rpg_student_id') : null) || 'anonymous';
   
   return <Game level={level} studentId={studentId} />;
 }

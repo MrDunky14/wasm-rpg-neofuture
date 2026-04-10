@@ -10,6 +10,7 @@ This is the main server that provides:
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -40,12 +41,23 @@ app = FastAPI(
 )
 
 # ── CORS ─────────────────────────────────────────────────────────────────
-# Allow all origins in development. In production, restrict to your domain.
+# In development: allow all origins. In production: restrict to specific domains.
+env = os.getenv('ENV', 'development').lower()
+if env == 'production':
+    # Production: restrict CORS to specific frontend domains
+    # Configure via CORS_ORIGINS environment variable (comma-separated)
+    cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173').split(',')
+    allow_credentials = False  # Don't allow credentials with specific origins unless truly needed
+else:
+    # Development: more permissive for local testing
+    cors_origins = ['*']
+    allow_credentials = True
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

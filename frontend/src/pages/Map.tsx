@@ -29,10 +29,16 @@ const Map = () => {
   });
 
   useEffect(() => {
+    let cancelled = false;
+    
     const loadLevels = async () => {
       try {
         setLoading(true);
+        setError('');
         const res = await api.get<{levels: BackendLevel[]}>('/api/level/list-prebuilt');
+        
+        if (cancelled) return;
+        
         // Only include levels that exist, map to display format
         const mappedLevels: PrebuiltLevel[] = (res.data.levels || [])
           .filter((l) => l.exists)
@@ -44,8 +50,8 @@ const Map = () => {
             boss_present: true,
           }));
         setLevels(mappedLevels);
-        setError('');
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load levels:', err);
         setError('Could not load available dungeons. Using demo levels.');
         // Fallback demo levels
@@ -73,11 +79,17 @@ const Map = () => {
           },
         ]);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadLevels();
+    
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSelectLevel = async (topic: string) => {
