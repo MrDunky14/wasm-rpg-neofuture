@@ -128,22 +128,36 @@ const Map = () => {
         </p>
 
         {error && (
-          <div className="rounded p-3 mb-6 border border-yellow-500/40 bg-yellow-500/10 text-yellow-200 text-xs text-center">
+          <div
+            className="rounded p-3 mb-6 border border-yellow-500/40 bg-yellow-500/10 text-yellow-200 text-xs text-center"
+            role="alert"
+            aria-live="polite"
+          >
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="text-center text-gray-400">
-            <p>Loading dungeons...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-live="polite" aria-busy="true">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={`skeleton-${idx}`}
+                className="game-panel rounded-lg p-5 border border-white/[0.07] animate-pulse"
+              >
+                <div className="w-full h-32 bg-white/5 rounded mb-4 border border-white/[0.08]" />
+                <div className="h-3 bg-white/10 rounded w-1/2 mb-3" />
+                <div className="h-2 bg-white/10 rounded w-4/5 mb-2" />
+                <div className="h-2 bg-white/10 rounded w-3/5 mb-4" />
+                <div className="h-7 bg-white/10 rounded" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {levels.map((level) => (
               <div
                 key={level.topic}
-                className="game-panel rounded-lg p-5 border border-white/[0.07] hover:border-cyan-500/50 transition-all cursor-pointer group"
-                onClick={() => handleSelectLevel(level.topic)}
+                className="game-panel rounded-lg p-5 border border-white/[0.07] hover:border-cyan-500/50 transition-all group"
               >
                 {/* Level thumbnail placeholder */}
                 <div className="w-full h-32 bg-gradient-to-br from-primary/20 to-secondary/20 rounded mb-4 flex items-center justify-center border border-white/[0.1] group-hover:border-secondary/30 transition-all">
@@ -189,7 +203,9 @@ const Map = () => {
                 {/* Select button */}
                 <button
                   className="pixel-btn-ghost text-[7px] py-2 px-4 w-full mt-4 group-hover:border-primary transition-all"
+                  onClick={() => handleSelectLevel(level.topic)}
                   disabled={selectedTopic === level.topic}
+                  aria-label={`Enter ${level.topic} dungeon`}
                 >
                   {selectedTopic === level.topic ? 'LOADING...' : 'ENTER DUNGEON'}
                 </button>
