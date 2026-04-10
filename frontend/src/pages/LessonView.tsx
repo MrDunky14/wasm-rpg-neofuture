@@ -38,17 +38,18 @@ const LessonView = ({ studentId, topic, failedConcepts, onBack, onContinue }: Le
           student_id: studentId,
           topic: normalizedTopic,
           failed_concepts: failedConcepts,
-        });
+        }, { timeout: 8000 });
 
         if (!cancelled) {
           setLesson(response.data);
         }
       } catch (requestError) {
-        console.error('Lesson generate failed, trying lesson cache endpoint:', requestError);
+        console.error('[Lesson] Generate failed, trying lesson cache endpoint:', requestError);
 
         try {
           const fallbackResponse = await api.get<LessonPayload>(`/api/lesson/${normalizedTopic}`, {
             params: { student_id: studentId },
+            timeout: 5000,
           });
 
           if (!cancelled) {
@@ -56,7 +57,7 @@ const LessonView = ({ studentId, topic, failedConcepts, onBack, onContinue }: Le
             setError('');
           }
         } catch (fallbackError) {
-          console.error('Lesson fallback fetch failed:', fallbackError);
+          console.error('[Lesson] Fallback fetch failed:', fallbackError);
           if (!cancelled) {
             setError('Lesson service is unavailable. You can still continue to the dungeon.');
           }
@@ -115,10 +116,10 @@ const LessonView = ({ studentId, topic, failedConcepts, onBack, onContinue }: Le
 
               {lesson.checkpoints.length > 0 && (
                 <div className="lesson-panel rounded-lg p-4 border border-white/[0.06]">
-                  <h3 className="font-pixel text-[8px] tracking-widest text-gray-400 mb-2">CHECKPOINTS</h3>
+                  <h3 className="font-pixel text-[8px] tracking-widest text-gray-400 mb-2">LEARNING CHECKPOINTS</h3>
                   <ul className="space-y-2 text-sm text-gray-200">
-                    {lesson.checkpoints.map((point) => (
-                      <li key={point} className="lesson-checkpoint">{point}</li>
+                    {lesson.checkpoints.map((point, idx) => (
+                      <li key={idx} className="lesson-checkpoint">✓ {point}</li>
                     ))}
                   </ul>
                 </div>

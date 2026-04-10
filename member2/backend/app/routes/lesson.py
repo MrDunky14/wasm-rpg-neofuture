@@ -12,6 +12,26 @@ router = APIRouter(prefix="/api/lesson", tags=["Lessons"])
 _lesson_cache: dict[str, LessonResponse] = {}
 
 
+def _safe_fallback_payload(topic: ConceptTopic) -> dict:
+    readable_topic = topic.value.replace("_", " ")
+    return {
+        "title": f"{readable_topic.title()} quick lesson",
+        "explanation": (
+            f"This is a fallback lesson for {readable_topic}. "
+            "Focus on the core definition, one worked example, and one checkpoint question."
+        ),
+        "pseudocode": "1) Define the concept\n2) Apply it once\n3) Check your understanding",
+        "example": f"Work a small {readable_topic} example from start to finish.",
+        "checkpoints": [
+            "I can explain this concept in one sentence.",
+            "I can solve one simple example.",
+            "I can identify when to use this concept.",
+        ],
+        "estimated_time_min": 5,
+        "source": "fallback",
+    }
+
+
 def _cache_key(student_id: str, topic: ConceptTopic) -> str:
     safe_student = student_id.strip().lower()[:50] or "anonymous"
     return f"{safe_student}:{topic.value}"
@@ -44,7 +64,11 @@ async def generate_topic_lesson(request: LessonGenerateRequest):
     if cached:
         return cached
 
-    payload = await generate_lesson(request.topic.value, request.failed_concepts)
+    try:
+        payload = await generate_lesson(request.topic.value, request.failed_concepts)
+    except Exception:
+        payload = _safe_fallback_payload(request.topic)
+
     lesson = _build_response(request.topic, payload)
     _lesson_cache[key] = lesson
     return lesson
@@ -59,7 +83,11 @@ async def get_topic_lesson(topic: ConceptTopic, student_id: str = Query("anonymo
     if cached:
         return cached
 
-    payload = await generate_lesson(topic.value, [])
+    try:
+        payload = await generate_lesson(topic.value, [])
+    except Exception:
+        payload = _safe_fallback_payload(topic)
+
     lesson = _build_response(topic, payload)
     _lesson_cache[key] = lesson
     return lesson

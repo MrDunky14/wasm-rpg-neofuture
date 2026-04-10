@@ -39,7 +39,14 @@ const Quiz = ({ onSubmit }: QuizProps) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [studentId, setStudentId] = useState('student_' + Date.now());
+  const [studentId, setStudentId] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'student_' + Date.now();
+    }
+
+    const stored = window.localStorage.getItem('wasm_rpg_student_id')?.trim();
+    return stored || ('student_' + Date.now());
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +89,9 @@ const Quiz = ({ onSubmit }: QuizProps) => {
       setError('');
       const res = await api.post<QuizResult>('/api/quiz/submit', payload);
       console.log('Quiz Result:', res.data);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('wasm_rpg_student_id', studentId);
+      }
       onSubmit(studentId, res.data);
     } catch (submitError) {
       console.error('Submit error:', submitError);

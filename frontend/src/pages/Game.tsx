@@ -1,11 +1,41 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import type { Enemy, LevelData, Position } from '../types/level';
 
+// Fallback heuristic judge in case API is unavailable
+import { judgeConceptAnswer as fallbackJudge } from '../lib/answerJudge';
+
 type GameProps = {
   level: LevelData;
   studentId?: string;
+};
+
+type JudgeResult = {
+  isCorrect: boolean;
+  hint: string;
+};
+
+// AI-powered answer grading via backend
+const gradeAnswerWithAI = async (question: string, answer: string): Promise<JudgeResult> => {
+  try {
+    const response = await api.post('/api/grade/answer', {
+      question,
+      student_answer: answer,
+    });
+    
+    const { is_correct, reasoning } = response.data;
+    const hint = reasoning || (is_correct ? 'Correct!' : 'Try again with the core concepts from your lesson.');
+    
+    return {
+      isCorrect: is_correct,
+      hint,
+    };
+  } catch (error) {
+    // Fallback to heuristic grading if API fails
+    console.warn('[Grading] API error, falling back to heuristics:', error);
+    return fallbackJudge(question, answer);
+  }
 };
 
 const TILE_SIZE = 28;
@@ -22,12 +52,15 @@ const posKey = (x: number, y: number) => `${x},${y}`;
 
 const Game = ({ level, studentId }: GameProps) => {
   const navigate = useNavigate();
+  const timeoutIdsRef = useRef<number[]>([]);
   const [playerPos, setPlayerPos] = useState<Position>({ x: 0, y: 0 });
   const [playerHp, setPlayerHp] = useState(100);
   const [moves, setMoves] = useState(0);
   const [levelWon, setLevelWon] = useState(false);
   const [message, setMessage] = useState('Navigate to the objective to clear the dungeon.');
   const [encounteredEnemies, setEncounteredEnemies] = useState<Record<string, boolean>>({});
+  const [activeEnemyKey, setActiveEnemyKey] = useState<string | null>(null);
+  const [enemyAnswer, setEnemyAnswer] = useState('');
   const [bossPrompt, setBossPrompt] = useState('');
   const [bossQuestionIndex, setBossQuestionIndex] = useState(0);
   const [bossAnswer, setBossAnswer] = useState('');
@@ -35,6 +68,44 @@ const Game = ({ level, studentId }: GameProps) => {
   const [runStartedAt, setRunStartedAt] = useState<number>(Date.now());
   const [savingProgress, setSavingProgress] = useState(false);
   const [progressSaved, setProgressSaved] = useState(false);
+
+  // Animation states
+  const [isDamageAnimating, setIsDamageAnimating] = useState(false);
+  const [defeatingEnemyKey, setDefeatingEnemyKey] = useState<string | null>(null);
+  const [showCorrectFeedback, setShowCorrectFeedback] = useState(false);
+  const [isGradingAnswer, setIsGradingAnswer] = useState(false);
+  const [combatLog, setCombatLog] = useState<string[]>([]);
+
+  const queueUiTimeout = useCallback((callback: () => void, delayMs: number) => {
+    const timeoutId = window.setTimeout(() => {
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+      callback();
+    }, delayMs);
+    timeoutIdsRef.current.push(timeoutId);
+  }, []);
+
+  const clearUiTimeouts = useCallback(() => {
+    for (const timeoutId of timeoutIdsRef.current) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutIdsRef.current = [];
+  }, []);
+
+  const appendCombatLog = useCallback((entry: string) => {
+    setCombatLog((prev) => [entry, ...prev].slice(0, 5));
+  }, []);
+
+  const applyDamage = useCallback((damage: number, source: string, currentHp: number) => {
+    const nextHp = Math.max(0, currentHp - damage);
+    setPlayerHp(nextHp);
+    appendCombatLog(`${source} dealt ${damage} damage (${currentHp} -> ${nextHp}).`);
+
+    if (nextHp === 0) {
+      appendCombatLog('HP reached 0. Defeat consequences applied.');
+    }
+
+    return nextHp;
+  }, [appendCombatLog]);
 
   const enemyMap = useMemo(() => {
     const map: Record<string, Enemy> = {};
@@ -54,22 +125,35 @@ const Game = ({ level, studentId }: GameProps) => {
     [level.boss?.question_sequence],
   );
   const hasBossQuestions = bossQuestions.length > 0;
+  const activeEnemy = useMemo(
+    () => (activeEnemyKey ? enemyMap[activeEnemyKey] : undefined),
+    [activeEnemyKey, enemyMap],
+  );
+  const inEnemyCombat = Boolean(activeEnemyKey && activeEnemy && !encounteredEnemies[activeEnemyKey]);
 
   useEffect(() => {
+    clearUiTimeouts();
     setPlayerPos(level.player_start ?? { x: 0, y: 0 });
     setPlayerHp(100);
     setMoves(0);
     setLevelWon(false);
     setEncounteredEnemies({});
+    setActiveEnemyKey(null);
+    setEnemyAnswer('');
     setBossPrompt('');
     setBossQuestionIndex(0);
     setBossAnswer('');
     setBossDefeated(false);
     setProgressSaved(false);
     setSavingProgress(false);
+    setIsGradingAnswer(false);
+    setIsDamageAnimating(false);
+    setDefeatingEnemyKey(null);
+    setShowCorrectFeedback(false);
+    setCombatLog([`Run started for ${level.concept.replace('_', ' ')} training.`]);
     setRunStartedAt(Date.now());
     setMessage('Navigate to the objective to clear the dungeon.');
-  }, [level]);
+  }, [clearUiTimeouts, level]);
 
   const isWalkable = useCallback((x: number, y: number) => {
     if (x < 0 || y < 0 || y >= level.height || x >= level.width) {
@@ -79,7 +163,7 @@ const Game = ({ level, studentId }: GameProps) => {
   }, [level.height, level.tiles, level.width]);
 
   const movePlayer = useCallback((dx: number, dy: number) => {
-    if (levelWon || playerHp <= 0) {
+    if (levelWon || playerHp <= 0 || inEnemyCombat) {
       return;
     }
 
@@ -94,7 +178,7 @@ const Game = ({ level, studentId }: GameProps) => {
       setMoves((m) => m + 1);
       return next;
     });
-  }, [isWalkable, levelWon, playerHp]);
+  }, [inEnemyCombat, isWalkable, levelWon, playerHp]);
 
   useEffect(() => {
     const key = posKey(playerPos.x, playerPos.y);
@@ -111,16 +195,99 @@ const Game = ({ level, studentId }: GameProps) => {
       return;
     }
 
-    if (enemyMap[key] && !encounteredEnemies[key]) {
-      const damage = enemyMap[key].damage ?? 10;
-      setEncounteredEnemies((prev) => ({ ...prev, [key]: true }));
-      setPlayerHp((hp) => Math.max(0, hp - damage));
-      setMessage(`Enemy encounter: ${enemyMap[key].type}. You took ${damage} damage.`);
+    if (enemyMap[key] && !encounteredEnemies[key] && activeEnemyKey !== key) {
+      const enemy = enemyMap[key];
+      setActiveEnemyKey(key);
+      setEnemyAnswer('');
+      setMessage(`Enemy encounter: ${enemy.type}. Answer correctly to defeat it.`);
     }
-  }, [bossQuestions, encounteredEnemies, enemyMap, hasBossQuestions, levelWon, objectiveKey, playerPos]);
+  }, [activeEnemyKey, bossQuestions, encounteredEnemies, enemyMap, hasBossQuestions, levelWon, objectiveKey, playerPos]);
 
-  const submitBossAnswer = useCallback(() => {
-    if (!hasBossQuestions || bossDefeated) {
+  const submitEnemyAnswer = useCallback(async () => {
+    if (isGradingAnswer || playerHp <= 0 || !activeEnemyKey) {
+      return;
+    }
+
+    const trimmedAnswer = enemyAnswer.trim();
+
+    if (!trimmedAnswer) {
+      setMessage('Write an answer before submitting enemy combat.');
+      return;
+    }
+
+    const enemy = enemyMap[activeEnemyKey];
+    if (!enemy) {
+      setActiveEnemyKey(null);
+      setEnemyAnswer('');
+      return;
+    }
+
+    const question = enemy.concept_question?.trim() || `Defeat ${enemy.type}`;
+    const enemyKey = activeEnemyKey;
+    let releaseGradingLock = true;
+    
+    try {
+      setIsGradingAnswer(true);
+      setMessage('Grading answer with AI...');
+      const judgement = await gradeAnswerWithAI(question, trimmedAnswer);
+
+      if (playerHp <= 0) {
+        return;
+      }
+
+      if (judgement.isCorrect) {
+        console.log('[Enemy Combat] Correct answer:', trimmedAnswer, 'Enemy defeated:', enemy.type);
+        appendCombatLog(`Correct answer vs ${enemy.type}. Enemy defeated.`);
+        
+        // Trigger enemy defeat animation
+        setDefeatingEnemyKey(enemyKey);
+        setShowCorrectFeedback(true);
+        releaseGradingLock = false;
+        
+        // Wait for animation before updating state
+        queueUiTimeout(() => {
+          if (playerHp <= 0) {
+            setIsGradingAnswer(false);
+            return;
+          }
+
+          setEncounteredEnemies((prev) => ({ ...prev, [enemyKey]: true }));
+          setActiveEnemyKey(null);
+          setEnemyAnswer('');
+          setMessage(`✓ Correct! ${enemy.type} defeated.`);
+          setShowCorrectFeedback(false);
+          setDefeatingEnemyKey(null);
+          setIsGradingAnswer(false);
+        }, 500);
+        return;
+      }
+
+      const damage = enemy.damage ?? 10;
+      console.log('[Enemy Combat] Wrong answer:', trimmedAnswer, 'Damage:', damage);
+      
+      // Trigger damage animation
+      setIsDamageAnimating(true);
+      queueUiTimeout(() => setIsDamageAnimating(false), 400);
+      
+      const nextHp = applyDamage(damage, enemy.type, playerHp);
+      setMessage(
+        nextHp === 0
+          ? `✗ Wrong. ${enemy.type} reduced your HP to 0.`
+          : `✗ Wrong. ${enemy.type} attacks for ${damage} HP. ${judgement.hint}`,
+      );
+    } catch (error) {
+      console.error('[Enemy Combat] Grading error:', error);
+      appendCombatLog('Enemy grading API error. Fallback handling executed.');
+      setMessage('Error grading answer. Please try again.');
+    } finally {
+      if (releaseGradingLock) {
+        setIsGradingAnswer(false);
+      }
+    }
+  }, [activeEnemyKey, appendCombatLog, applyDamage, enemyAnswer, enemyMap, isGradingAnswer, playerHp, queueUiTimeout]);
+
+  const submitBossAnswer = useCallback(async () => {
+    if (isGradingAnswer || !hasBossQuestions || bossDefeated || playerHp <= 0) {
       return;
     }
 
@@ -129,20 +296,109 @@ const Game = ({ level, studentId }: GameProps) => {
       return;
     }
 
-    if (bossQuestionIndex >= bossQuestions.length - 1) {
-      setBossDefeated(true);
-      setBossPrompt('');
-      setBossAnswer('');
-      setMessage('Boss defeated. Dungeon mastered.');
+    const currentQuestion = bossQuestions[bossQuestionIndex] ?? '';
+    console.log('[Boss Combat] Q' + (bossQuestionIndex + 1) + ':', currentQuestion);
+    console.log('[Boss Combat] Answer:', bossAnswer.trim());
+    let releaseGradingLock = true;
+
+    try {
+      setIsGradingAnswer(true);
+      setMessage('Grading boss answer with AI...');
+      const judgement = await gradeAnswerWithAI(currentQuestion, bossAnswer);
+      console.log('[Boss Combat] Judgement:', judgement);
+
+      if (playerHp <= 0) {
+        return;
+      }
+
+      if (!judgement.isCorrect) {
+        const bossDamage = level.boss?.damage_per_wrong_answer ?? level.boss?.damage ?? 20;
+        
+        // Trigger damage animation
+        setIsDamageAnimating(true);
+        queueUiTimeout(() => setIsDamageAnimating(false), 400);
+        
+        const nextHp = applyDamage(bossDamage, 'Boss', playerHp);
+        setMessage(
+          nextHp === 0
+            ? `✗ Wrong. Boss dealt ${bossDamage} damage and your HP reached 0.`
+            : `✗ Wrong. Boss dealt ${bossDamage} damage. ${judgement.hint}`,
+        );
+        return;
+      }
+
+      // Correct answer for boss
+      setShowCorrectFeedback(true);
+      appendCombatLog(`Correct boss answer ${bossQuestionIndex + 1}/${bossQuestions.length}.`);
+      
+      if (bossQuestionIndex >= bossQuestions.length - 1) {
+        console.log('[Boss Combat] All questions answered correctly. Boss defeated!');
+        releaseGradingLock = false;
+        
+        // Boss defeat - wait a bit longer for final victory
+        queueUiTimeout(() => {
+          if (playerHp <= 0) {
+            setIsGradingAnswer(false);
+            return;
+          }
+
+          setBossDefeated(true);
+          setBossPrompt('');
+          setBossAnswer('');
+          setMessage('✓ Boss defeated. Dungeon mastered.');
+          setShowCorrectFeedback(false);
+          setIsGradingAnswer(false);
+        }, 500);
+        return;
+      }
+
+      // Correct but boss still has more questions - advance
+      releaseGradingLock = false;
+      queueUiTimeout(() => {
+        if (playerHp <= 0) {
+          setIsGradingAnswer(false);
+          return;
+        }
+
+        const nextIndex = bossQuestionIndex + 1;
+        setBossQuestionIndex(nextIndex);
+        setBossPrompt(bossQuestions[nextIndex]);
+        setBossAnswer('');
+        console.log('[Boss Combat] Advanced to question ' + (nextIndex + 1) + '/' + bossQuestions.length);
+        setMessage(`✓ Correct. Boss challenged (${nextIndex + 1}/${bossQuestions.length}).`);
+        setShowCorrectFeedback(false);
+        setIsGradingAnswer(false);
+      }, 400);
+    } catch (error) {
+      console.error('[Boss Combat] Grading error:', error);
+      appendCombatLog('Boss grading API error. Fallback handling executed.');
+      setMessage('Error grading boss answer. Please try again.');
+    } finally {
+      if (releaseGradingLock) {
+        setIsGradingAnswer(false);
+      }
+    }
+  }, [appendCombatLog, applyDamage, bossAnswer, bossDefeated, bossQuestionIndex, bossQuestions, hasBossQuestions, isGradingAnswer, level.boss?.damage, level.boss?.damage_per_wrong_answer, playerHp, queueUiTimeout]);
+
+  useEffect(() => {
+    if (playerHp > 0) {
       return;
     }
 
-    const nextIndex = bossQuestionIndex + 1;
-    setBossQuestionIndex(nextIndex);
-    setBossPrompt(bossQuestions[nextIndex]);
-    setBossAnswer('');
-    setMessage(`Boss challenge advanced (${nextIndex + 1}/${bossQuestions.length}).`);
-  }, [bossAnswer, bossDefeated, bossQuestionIndex, bossQuestions, hasBossQuestions]);
+    clearUiTimeouts();
+    setIsGradingAnswer(false);
+    setIsDamageAnimating(false);
+    setShowCorrectFeedback(false);
+    setDefeatingEnemyKey(null);
+    setActiveEnemyKey(null);
+    setBossPrompt('');
+    appendCombatLog('Defeat consequence synchronized: encounters closed at 0 HP.');
+    setMessage('You were defeated. Exit to map and retry the dungeon.');
+  }, [appendCombatLog, clearUiTimeouts, playerHp]);
+
+  useEffect(() => () => {
+    clearUiTimeouts();
+  }, [clearUiTimeouts]);
 
   useEffect(() => {
     const shouldSave = levelWon && (!hasBossQuestions || bossDefeated);
@@ -158,9 +414,10 @@ const Game = ({ level, studentId }: GameProps) => {
       try {
         const elapsedSeconds = Math.max(1, Math.round((Date.now() - runStartedAt) / 1000));
         const computedScore = Math.max(10, 150 - moves * 2 + (bossDefeated ? 50 : 20) + Math.max(playerHp, 0));
+        const resolvedStudentId = studentId?.trim() || 'anonymous';
 
-        await api.post('/api/progress/save', {
-          student_id: studentId?.trim() || 'anonymous',
+        console.log('[Progress Save] Sending:', {
+          student_id: resolvedStudentId,
           level_name: level.level_name,
           concept: level.concept,
           completed: true,
@@ -169,14 +426,29 @@ const Game = ({ level, studentId }: GameProps) => {
           boss_defeated: bossDefeated,
         });
 
+        const response = await api.post('/api/progress/save', {
+          student_id: resolvedStudentId,
+          level_name: level.level_name,
+          concept: level.concept,
+          completed: true,
+          time_seconds: elapsedSeconds,
+          score: computedScore,
+          boss_defeated: bossDefeated,
+        });
+
+        console.log('[Progress Save] Success:', response.data);
         if (!cancelled) {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('wasm_rpg_student_id', resolvedStudentId);
+          }
           setProgressSaved(true);
           setMessage('Run complete. Progress saved to Adventure Log.');
         }
-      } catch (saveError) {
-        console.error(saveError);
+      } catch (saveError: unknown) {
+        const errorMsg = saveError instanceof Error ? saveError.message : String(saveError);
+        console.error('[Progress Save Error]', errorMsg);
         if (!cancelled) {
-          setMessage('Run complete, but progress could not be saved.');
+          setMessage('Run complete, but progress could not be saved. Check console.');
         }
       } finally {
         if (!cancelled) {
@@ -280,23 +552,28 @@ const Game = ({ level, studentId }: GameProps) => {
                         <img
                           src="/game-assets/objective-book.png"
                           alt="Objective"
-                          className="absolute inset-0 m-auto w-4 h-4 object-contain"
+                          className="absolute inset-0 m-auto w-4 h-4 object-contain animate-idle-bob animate-pulse-glow"
                         />
                       )}
 
                       {enemy && !enemyDefeated && (
                         <img
-                          src="/game-assets/enemy-face.png"
+                          src="/game-assets/enemy-reptile.png"
                           alt="Enemy"
-                          className="absolute inset-0 m-auto w-5 h-5 object-contain"
+                          className={`absolute inset-0 m-auto w-5 h-5 object-contain ${
+                            defeatingEnemyKey === key ? 'animate-shrink-out' : 'animate-idle-bob animate-alert'
+                          }`}
+                          style={{ animationDelay: `${((x + y) % 4) * 120}ms` }}
                         />
                       )}
 
                       {isPlayer && (
                         <img
-                          src="/game-assets/player-face.png"
+                          src="/game-assets/player-caveman.png"
                           alt="Player"
-                          className="absolute inset-0 m-auto w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                          className={`absolute inset-0 m-auto w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] ${
+                            isDamageAnimating ? 'animate-damage-shake' : 'animate-idle-bob'
+                          }`}
                         />
                       )}
                     </div>
@@ -316,7 +593,7 @@ const Game = ({ level, studentId }: GameProps) => {
 
         <aside className="game-panel pixel-border rounded-lg p-4 md:p-5 space-y-4">
           <div className="flex items-center gap-3">
-            <img src="/game-assets/player-face.png" alt="Player portrait" className="w-10 h-10 object-contain" />
+            <img src="/game-assets/player-caveman.png" alt="Player portrait" className="w-10 h-10 object-contain animate-idle-bob" />
             <div>
               <div className="font-pixel text-[8px] text-gray-400 tracking-widest">PLAYER</div>
               <div className="font-pixel text-[10px] text-white tracking-wider">CAVEMAN</div>
@@ -328,8 +605,8 @@ const Game = ({ level, studentId }: GameProps) => {
               <span className="font-pixel text-[7px] text-danger tracking-widest">HP</span>
               <span className="font-pixel text-[7px] text-gray-400">{playerHp}</span>
             </div>
-            <div className="stat-bar">
-              <div className="stat-bar-fill bg-danger" style={{ width: hpWidth }} />
+            <div className={`stat-bar ${isDamageAnimating ? 'animate-damage-flash' : ''}`}>
+              <div className="stat-bar-fill bg-danger health-bar-transition" style={{ width: hpWidth }} />
             </div>
           </div>
 
@@ -344,13 +621,51 @@ const Game = ({ level, studentId }: GameProps) => {
             </div>
           </div>
 
-          <div className="game-panel rounded p-3 border border-white/[0.05]">
+          <div
+            className={`game-panel rounded p-3 border border-white/[0.05] ${showCorrectFeedback ? 'animate-pulse-glow' : ''}`}
+            style={{
+              backgroundImage: "url('/game-assets/dialog-box.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundBlendMode: 'overlay',
+            }}
+          >
             <div className="font-pixel text-[7px] text-gray-500 tracking-widest mb-2">MISSION</div>
-            <p className="text-xs text-gray-200 leading-relaxed">{message}</p>
+            <p className={`text-xs text-gray-200 leading-relaxed ${showCorrectFeedback ? 'text-success' : ''}`}>{message}</p>
+            {inEnemyCombat && activeEnemy && (
+              <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                <div className="flex items-start gap-2">
+                  <img src="/game-assets/enemy-reptile.png" alt="Enemy portrait" className={`w-8 h-8 object-contain mt-0.5 ${isDamageAnimating ? 'animate-bounce' : 'animate-idle-bob'}`} />
+                  <div className="w-full">
+                    <div className="font-pixel text-[7px] text-accent tracking-widest mb-1">
+                      ENEMY CHALLENGE
+                    </div>
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      {activeEnemy.concept_question?.trim() || `Defeat the ${activeEnemy.type} with a concept answer.`}
+                    </p>
+                    <textarea
+                      value={enemyAnswer}
+                      onChange={(event) => setEnemyAnswer(event.target.value)}
+                      rows={2}
+                      placeholder="Type your answer to defeat this enemy..."
+                      disabled={isGradingAnswer || playerHp <= 0}
+                      className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
+                    />
+                    <button
+                      className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
+                      onClick={submitEnemyAnswer}
+                      disabled={isGradingAnswer || playerHp <= 0}
+                    >
+                      {isGradingAnswer ? 'Grading...' : 'Submit Enemy Answer'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {bossPrompt && (
               <div className="mt-3 pt-3 border-t border-white/[0.06]">
                 <div className="flex items-start gap-2">
-                  <img src="/game-assets/boss-face.png" alt="Boss portrait" className="w-8 h-8 object-contain mt-0.5" />
+                  <img src="/game-assets/boss-slime-idle.png" alt="Boss portrait" className="w-8 h-8 object-contain mt-0.5 animate-idle-bob" />
                   <div>
                     <div className="font-pixel text-[7px] text-danger tracking-widest mb-1">
                       BOSS QUESTION {bossQuestionIndex + 1}/{bossQuestions.length}
@@ -361,13 +676,33 @@ const Game = ({ level, studentId }: GameProps) => {
                       onChange={(event) => setBossAnswer(event.target.value)}
                       rows={2}
                       placeholder="Type your answer to advance..."
+                      disabled={isGradingAnswer || playerHp <= 0}
                       className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
                     />
-                    <button className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2" onClick={submitBossAnswer}>
-                      Submit Boss Answer
+                    <button
+                      className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
+                      onClick={submitBossAnswer}
+                      disabled={isGradingAnswer || playerHp <= 0}
+                    >
+                      {isGradingAnswer ? 'Grading...' : 'Submit Boss Answer'}
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div className="game-panel rounded p-3 border border-white/[0.05]">
+            <div className="font-pixel text-[7px] text-gray-500 tracking-widest mb-2">HEALTH LOG</div>
+            {combatLog.length === 0 ? (
+              <p className="text-[11px] text-gray-500">No health events yet.</p>
+            ) : (
+              <div className="space-y-1">
+                {combatLog.map((entry, index) => (
+                  <p key={`${entry}-${index}`} className="text-[11px] text-gray-300 leading-relaxed">
+                    {entry}
+                  </p>
+                ))}
               </div>
             )}
           </div>
@@ -392,7 +727,7 @@ const Game = ({ level, studentId }: GameProps) => {
           )}
 
           <div className="text-[11px] text-gray-500 leading-relaxed">
-            Use WASD or Arrow Keys for movement. Walls block movement. Enemy tiles deal damage once.
+            Use WASD or Arrow Keys for movement. Walls block movement. Enemy and boss prompts must be answered correctly to win.
           </div>
         </aside>
       </div>

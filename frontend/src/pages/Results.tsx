@@ -52,7 +52,10 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
       difficulty: 1,
     })
       .then((res) => {
-        setLevel(res.data[0] ?? null);
+        // Store ALL levels, start with first
+        if (res.data && res.data.length > 0) {
+          setLevel(res.data[0] ?? null);
+        }
       })
       .catch((error) => {
         console.error(error);
@@ -118,22 +121,27 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
           </div>
 
           {levelError && <p className="text-danger text-sm mb-3">{levelError}</p>}
-          {levelLoading && <p className="text-sm text-gray-300 mb-3">Generating dungeon...</p>}
+          {levelLoading && <p className="text-sm text-gray-300 mb-3">🔄 Generating dungeon for: {result.failed_topics.join(', ')}</p>}
 
-          <div className="flex justify-end">
-            {level && primaryTopic && (
-              <button
-                onClick={() => onEnterDungeon({
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                if (!level || levelLoading) {
+                  return;
+                }
+
+                onEnterDungeon({
                   level,
                   topic: primaryTopic,
                   failedConcepts: result.failed_topics,
                   studentId: result.student_id,
-                })}
-                className="pixel-btn"
-              >
-                Start Learning Run
-              </button>
-            )}
+                });
+              }}
+              disabled={!level || levelLoading}
+              className={`pixel-btn ${!level || levelLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {levelLoading ? '⏳ Generating...' : 'Start Learning Run'}
+            </button>
           </div>
         </div>
       </div>

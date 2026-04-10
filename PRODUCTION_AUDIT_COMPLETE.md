@@ -62,7 +62,9 @@
 | **Level Gen** | Templates + procedural | Both implemented with variety | ✅ Perfect | 🟢 Ready |
 | **Difficulty** | Adaptive engine | Core logic implemented | ✅ Good | 🟢 Ready |
 | **Boss Encounters** | Concept-specific | Questions per topic, themed | ✅ Perfect | 🟢 Ready |
-| **Quality Scoring** | 5-category algorithm | Validation layer (MVP scope) | ⚠️ Deferred | 🟡 Future |
+| **Quality Scoring** | 5-category algorithm | Full implementation with thresholds | ✅ Perfect | 🟢 Ready |
+| **Hysteresis Cooldown** | Adaptive difficulty system | Promotion/demotion with cooldown + misconception tuning | ✅ Perfect | 🟢 Ready |
+| **Analytics** | Event telemetry + KPI | Full telemetry routes, KPI computation, A/B framework | ✅ Perfect | 🟢 Ready |
 | **AI Lessons** | Gemini + OpenRouter | Both providers + fallback | ✅ Perfect | 🟢 Ready |
 | **UI/UX** | 5 screens designed | All scaffolded, basic impl. | ✅ On track | 🟡 In progress |
 | **Analytics** | Event telemetry + KPI | Schema designed (impl. future) | ⚠️ Deferred | 🟡 Future |

@@ -143,8 +143,60 @@
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
+
+  /* Damage & Combat Animations */
+  .animate-damage-shake {
+    animation: damage-shake 0.4s ease-in-out;
+  }
+
+  .animate-damage-flash {
+    animation: damage-flash 0.6s ease-out;
+  }
+
+  .animate-enemy-defeat {
+    animation: enemy-defeat 0.5s ease-out;
+  }
+
+  .animate-heal-pulse {
+    animation: heal-pulse 0.6s ease-out;
+  }
+
+  .animate-sword-slash {
+    animation: sword-slash 0.3s ease-in-out;
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .animate-fade-in-quick {
+    animation: fade-in-quick 0.3s ease-out;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 1.5s ease-in-out infinite;
+  }
+
+  .animate-idle-bob {
+    animation: idle-bob 2.4s ease-in-out infinite;
+  }
+
+  .animate-alert {
+    animation: alert-pulse 1.8s ease-in-out infinite;
+  }
+
+  /* Health Bar Transition */
+  .health-bar-transition {
+    transition: width 0.3s ease-out;
+  }
+
+  /* Enemy Scaling */
+  .animate-shrink-out {
+    animation: shrink-out 0.4s ease-in;
+  }
 }
 
+/* Keyframe Animations */
 @keyframes float {
   0%, 100% {
     transform: translateY(0);
@@ -152,5 +204,193 @@
 
   50% {
     transform: translateY(-8px);
+  }
+}
+
+@keyframes damage-shake {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+
+  10% {
+    transform: translateX(-4px) rotate(-1deg);
+  }
+
+  20% {
+    transform: translateX(4px) rotate(1deg);
+  }
+
+  30% {
+    transform: translateX(-3px) rotate(-0.5deg);
+  }
+
+  40% {
+    transform: translateX(3px) rotate(0.5deg);
+  }
+
+  50% {
+    transform: translateX(-2px) rotate(0deg);
+  }
+
+  60% {
+    transform: translateX(2px) rotate(0deg);
+  }
+
+  75% {
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+@keyframes damage-flash {
+  0% {
+    background-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+  }
+
+  50% {
+    background-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  }
+
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes enemy-defeat {
+  0% {
+    opacity: 1;
+    transform: scale(1) rotateZ(0deg);
+  }
+
+  50% {
+    transform: scale(1.1) rotateZ(5deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0) rotateZ(45deg);
+  }
+}
+
+@keyframes heal-pulse {
+  0% {
+    box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+  }
+
+  100% {
+    box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes sword-slash {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px) scaleX(0.5);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(20px) scaleX(0.5);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  75% {
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in-quick {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.8);
+  }
+}
+
+@keyframes shrink-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@keyframes idle-bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes alert-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 rgba(248, 113, 113, 0));
+  }
+
+  50% {
+    filter: drop-shadow(0 0 8px rgba(248, 113, 113, 0.55));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-damage-shake,
+  .animate-damage-flash,
+  .animate-enemy-defeat,
+  .animate-heal-pulse,
+  .animate-sword-slash,
+  .animate-bounce-in,
+  .animate-fade-in-quick,
+  .animate-pulse-glow,
+  .animate-shrink-out,
+  .animate-idle-bob,
+  .animate-alert {
+    animation: none !important;
   }
 }

@@ -12,6 +12,9 @@ from urllib import request as urlrequest
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_OPENROUTER_HTTP_TIMEOUT_SECONDS = 6
+DEFAULT_PROVIDER_TIMEOUT_SECONDS = 5
+DEFAULT_OPENROUTER_MAX_CANDIDATES = 2
 
 DEFAULT_OPENROUTER_FALLBACK_MODELS = (
     "google/gemma-3-27b-it:free",
@@ -346,6 +349,14 @@ async def _generate_with_openrouter(prompt: str, default_lesson: dict[str, Any])
 
     app_name = os.getenv("OPENROUTER_APP_NAME", "wasm-rpg-neofuture").strip() or "wasm-rpg-neofuture"
     site_url = os.getenv("OPENROUTER_SITE_URL", "").strip()
+    http_timeout_seconds = float(
+        os.getenv("OPENROUTER_HTTP_TIMEOUT_SECONDS", str(DEFAULT_OPENROUTER_HTTP_TIMEOUT_SECONDS))
+    )
+
+    max_candidates = int(os.getenv("OPENROUTER_MAX_CANDIDATES", str(DEFAULT_OPENROUTER_MAX_CANDIDATES)))
+    if max_candidates < 1:
+        max_candidates = 1
+    candidate_models = candidate_models[:max_candidates]
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -369,7 +380,7 @@ async def _generate_with_openrouter(prompt: str, default_lesson: dict[str, Any])
             headers=headers,
             method="POST",
         )
-        with urlrequest.urlopen(req, timeout=30) as response:
+        with urlrequest.urlopen(req, timeout=http_timeout_seconds) as response:
             raw = response.read().decode("utf-8")
         return json.loads(raw)
 
@@ -424,12 +435,25 @@ async def generate_lesson(topic: str, failed_concepts: list[str] | None = None) 
         "}."
     )
 
+    provider_timeout_seconds = float(
+        os.getenv("LESSON_PROVIDER_TIMEOUT_SECONDS", str(DEFAULT_PROVIDER_TIMEOUT_SECONDS))
+    )
+
+    async def run_provider_with_timeout(provider) -> dict[str, Any] | None:
+        try:
+            return await asyncio.wait_for(
+                provider(prompt, default_lesson),
+                timeout=provider_timeout_seconds,
+            )
+        except Exception:
+            return None
+
     if requested_provider == "gemini":
-        generated = await _generate_with_gemini(prompt, default_lesson)
+        generated = await run_provider_with_timeout(_generate_with_gemini)
         return generated or default_lesson
 
     if requested_provider == "openrouter":
-        generated = await _generate_with_openrouter(prompt, default_lesson)
+        generated = await run_provider_with_timeout(_generate_with_openrouter)
         return generated or default_lesson
 
     # auto mode: prefer OpenRouter when key is present (helps when Gemini quota is exhausted)
@@ -440,8 +464,153 @@ async def generate_lesson(topic: str, failed_concepts: list[str] | None = None) 
         providers.append(_generate_with_gemini)
 
     for provider in providers:
-        generated = await provider(prompt, default_lesson)
+        generated = await run_provider_with_timeout(provider)
         if generated:
             return generated
 
     return default_lesson
+
+
+async def grade_answer_with_ai(question: str, student_answer: str, correct_answer: str | None = None) -> dict[str, Any]:
+    """
+    Grade a free-text student answer using AI via OpenRouter.
+    
+    Args:
+        question: The question/prompt the student answered
+        student_answer: The student's response
+        correct_answer: Optional reference answer for context
+    
+    Returns:
+        {
+            "is_correct": bool,
+            "confidence": float (0.0-1.0),
+            "reasoning": str,
+            "source": str ("openrouter", "fallback", etc.)
+        }
+    """
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        # Fallback: use basic lenient heuristics
+        return {
+            "is_correct": len(student_answer.strip()) > 2,
+            "confidence": 0.5,
+            "reasoning": "AI grading unavailable; using minimal validation",
+            "source": "fallback:length",
+        }
+
+    model = os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL).strip() or DEFAULT_OPENROUTER_MODEL
+    http_timeout_seconds = float(
+        os.getenv("OPENROUTER_HTTP_TIMEOUT_SECONDS", str(DEFAULT_OPENROUTER_HTTP_TIMEOUT_SECONDS))
+    )
+    provider_timeout_seconds = float(
+        os.getenv("GRADE_PROVIDER_TIMEOUT_SECONDS", "3")
+    )
+
+    app_name = os.getenv("OPENROUTER_APP_NAME", "wasm-rpg-neofuture").strip() or "wasm-rpg-neofuture"
+    site_url = os.getenv("OPENROUTER_SITE_URL", "").strip()
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-Title": app_name,
+    }
+    if site_url:
+        headers["HTTP-Referer"] = site_url
+
+    # Build grading prompt
+    reference_text = f"\nReference answer (if provided): {correct_answer}" if correct_answer else ""
+    grading_prompt = (
+        f"You are a strict but fair DSA (Data Structures & Algorithms) grading assistant. "
+        f"Grade this student answer and provide a JSON response.\n\n"
+        f"Question: {question}\n"
+        f"Student Answer: {student_answer}"
+        f"{reference_text}\n\n"
+        f"Respond with ONLY this JSON (no markdown, no explanation):\n"
+        f"{{\n"
+        f'  "is_correct": boolean,\n'
+        f'  "confidence": number between 0.0 and 1.0,\n'
+        f'  "reasoning": "brief explanation (1-2 sentences)"\n'
+        f"}}"
+    )
+
+    def _send_grading_request(model_name: str) -> dict[str, Any]:
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "user", "content": grading_prompt},
+            ],
+            "temperature": 0.1,  # Low temp for consistent grading
+            "max_tokens": 150,
+        }
+        req = urlrequest.Request(
+            OPENROUTER_API_URL,
+            data=json.dumps(payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with urlrequest.urlopen(req, timeout=http_timeout_seconds) as response:
+            raw = response.read().decode("utf-8")
+        return json.loads(raw)
+
+    try:
+        response_payload = await asyncio.wait_for(
+            asyncio.to_thread(_send_grading_request, model),
+            timeout=provider_timeout_seconds,
+        )
+        
+        choices = response_payload.get("choices", [])
+        if not choices:
+            return {
+                "is_correct": False,
+                "confidence": 0.0,
+                "reasoning": "No response from AI",
+                "source": "fallback:no_response",
+            }
+
+        first_choice = choices[0] if isinstance(choices[0], dict) else {}
+        message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
+        content = message.get("content", "") if isinstance(message, dict) else ""
+        
+        if not isinstance(content, str):
+            content = ""
+        
+        raw_text = _extract_openrouter_text(content)
+        
+        json_payload = _extract_json_object(raw_text)
+        if not json_payload:
+            return {
+                "is_correct": False,
+                "confidence": 0.0,
+                "reasoning": "Invalid AI response format",
+                "source": "fallback:parse_error",
+            }
+
+        parsed = json.loads(json_payload)
+        
+        # Validate and normalize response
+        is_correct = bool(parsed.get("is_correct", False))
+        confidence = float(parsed.get("confidence", 0.5))
+        confidence = max(0.0, min(1.0, confidence))  # Clamp to [0, 1]
+        reasoning = str(parsed.get("reasoning", "")).strip()[:200]
+        
+        return {
+            "is_correct": is_correct,
+            "confidence": confidence,
+            "reasoning": reasoning,
+            "source": f"openrouter:{model}",
+        }
+        
+    except asyncio.TimeoutError:
+        return {
+            "is_correct": False,
+            "confidence": 0.0,
+            "reasoning": "AI grading timeout; consider answer incorrect",
+            "source": "fallback:timeout",
+        }
+    except Exception as e:
+        return {
+            "is_correct": False,
+            "confidence": 0.0,
+            "reasoning": f"AI grading error: {str(e)[:50]}",
+            "source": "fallback:error",
+        }

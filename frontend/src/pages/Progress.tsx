@@ -19,19 +19,37 @@ type ProgressHistory = {
 
 const Progress = () => {
   const [progress, setProgress] = useState<ProgressHistory | null>(null);
-  const [studentId] = useState('demo_player');
+  const [studentId, setStudentId] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'demo_player';
+    }
+
+    const stored = window.localStorage.getItem('wasm_rpg_student_id')?.trim();
+    return stored || 'demo_player';
+  });
+  const [draftStudentId, setDraftStudentId] = useState(studentId);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setError('');
     api.get<ProgressHistory>(`/api/progress/${studentId}`)
       .then((res) => {
         setProgress(res.data);
       })
       .catch((fetchError) => {
         console.error(fetchError);
+        setProgress(null);
         setError('Could not load progress yet. Play and save one run first.');
       });
   }, [studentId]);
+
+  const loadStudentProgress = () => {
+    const normalized = draftStudentId.trim() || 'demo_player';
+    setStudentId(normalized);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('wasm_rpg_student_id', normalized);
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center overflow-y-auto overflow-x-hidden pt-24 md:pt-32 pb-20 px-4 md:px-8">
@@ -39,6 +57,19 @@ const Progress = () => {
         <div className="game-panel rounded-xl p-5 md:p-6 border border-white/[0.08]">
           <h1 className="font-pixel text-[11px] md:text-[12px] text-secondary tracking-wider">ADVENTURE LOG</h1>
           {error && <p className="text-danger text-sm mt-2">{error}</p>}
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+            <input
+              type="text"
+              value={draftStudentId}
+              onChange={(event) => setDraftStudentId(event.target.value)}
+              placeholder="student id"
+              className="w-full sm:w-64 bg-[#0b1224] border border-white/[0.12] rounded px-3 py-2 text-sm text-white outline-none focus:border-secondary"
+            />
+            <button onClick={loadStudentProgress} className="pixel-btn-ghost">
+              Load Player
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
             <div className="game-panel rounded p-3 border border-white/[0.05]">

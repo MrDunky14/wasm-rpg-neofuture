@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import close_db
-from app.routes import lesson, level, progress, quiz, telemetry
+from app.routes import grading, lesson, level, progress, quiz, telemetry
 
 
 @asynccontextmanager
@@ -54,6 +54,7 @@ app.include_router(quiz.router)
 app.include_router(level.router)
 app.include_router(progress.router)
 app.include_router(lesson.router)
+app.include_router(grading.router)
 app.include_router(telemetry.router)
 
 

@@ -4,14 +4,18 @@ export type Enemy = {
   x: number;
   y: number;
   type: string;
+  max_hp?: number;
   hp?: number;
   damage?: number;
+  concept_question?: string;
 };
 
 export type Boss = {
   type: string;
+  max_hp?: number;
   hp?: number;
   damage?: number;
+  damage_per_wrong_answer?: number;
   mechanic_type?: string;
   question_sequence?: string[];
 };

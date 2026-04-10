@@ -49,6 +49,9 @@ function App() {
         <Route path="/quiz" element={
           <Quiz onSubmit={(studentId, result) => {
             console.log('Quiz submitted by:', studentId);
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem('wasm_rpg_student_id', studentId);
+            }
             setCurrentLevel(null);
             setEntry(null);
             setChallengeCleared(false);
