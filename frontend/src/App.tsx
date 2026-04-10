@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { Landing } from './pages/Landing';
+import Home from './pages/Home';
 import Quiz from './pages/Quiz';
 import Results from './pages/Results';
 import Game from './pages/Game';
@@ -44,7 +44,7 @@ function App() {
     <div className="min-h-screen w-full bg-background text-white">
       <Navbar />
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Home />} />
 
         <Route path="/quiz" element={
           <Quiz onSubmit={(studentId, result) => {
