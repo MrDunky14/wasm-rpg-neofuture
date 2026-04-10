@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WASM-RPG Level Payload",
+  "description": "The shared JSON contract between FastAPI (Tier 2) and C++ WASM Engine (Tier 3). ALL tiers must code against this schema. Changes require group approval.",
+  "type": "object",
+  "required": ["level_name", "concept", "width", "height", "tiles", "player_start", "objective"],
+  "properties": {
+    "level_name": {
+      "type": "string",
+      "description": "Human-readable dungeon name"
+    },
+    "concept": {
+      "type": "string",
+      "enum": ["stack", "queue", "sorting", "binary_search", "recursion", "linked_list", "graph_traversal", "math_algebra"],
+      "description": "Academic concept this dungeon teaches"
+    },
+    "difficulty": {
+      "type": "integer",
+      "enum": [1, 2, 3],
+      "description": "1=Easy, 2=Medium, 3=Hard"
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 50
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 50
+    },
+    "tiles": {
+      "type": "array",
+      "description": "2D grid of tile type IDs. Row-major order (tiles[y][x]).",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        }
+      }
+    },
+    "player_start": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      }
+    },
+    "objective": {
+      "type": "object",
+      "required": ["x", "y", "type"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "type": { "type": "string", "default": "reach_exit" }
+      }
+    },
+    "enemies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "x", "y"],
+        "properties": {
+          "type": { "type": "string" },
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "hp": { "type": "integer", "default": 30 },
+          "damage": { "type": "integer", "default": 10 },
+          "concept_question": { "type": "string" }
+        }
+      }
+    },
+    "boss": {
+      "type": ["object", "null"],
+      "properties": {
+        "type": { "type": "string" },
+        "hp": { "type": "integer", "default": 100 },
+        "damage": { "type": "integer", "default": 20 },
+        "mechanic_type": { "type": "string" },
+        "question_sequence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "damage_per_wrong_answer": { "type": "integer", "default": 25 }
+      }
+    }
+  },
+  "tile_types": {
+    "0": "floor",
+    "1": "wall",
+    "2": "door",
+    "3": "enemy_spawn",
+    "4": "objective",
+    "5": "trap",
+    "6": "boss_spawn"
+  }
+}

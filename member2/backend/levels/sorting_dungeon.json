@@ -1,0 +1,39 @@
+{
+  "level_name": "The Unsorted Abyss",
+  "concept": "sorting",
+  "difficulty": 2,
+  "width": 14,
+  "height": 12,
+  "tiles": [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,0,1,0,0,0,1],
+    [1,0,0,0,1,0,3,0,0,1,0,0,0,1],
+    [1,0,0,0,2,0,0,0,0,2,0,0,0,1],
+    [1,1,1,1,1,1,0,0,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,0,0,0,0,1,1,1,1,1],
+    [1,0,0,0,2,0,3,0,0,2,0,0,0,1],
+    [1,0,0,0,1,0,0,0,0,1,0,0,0,1],
+    [1,0,0,0,1,0,0,4,0,1,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ],
+  "player_start": { "x": 1, "y": 1 },
+  "objective": { "x": 7, "y": 10, "type": "reach_exit" },
+  "enemies": [
+    { "type": "chaos_sorter", "x": 6, "y": 2, "hp": 35, "damage": 10, "concept_question": "Sort [5,2,8,1] in ascending order." },
+    { "type": "swap_phantom", "x": 6, "y": 8, "hp": 35, "damage": 10, "concept_question": "What is the worst-case complexity of Bubble Sort?" }
+  ],
+  "boss": {
+    "type": "sort_master",
+    "hp": 100,
+    "damage": 20,
+    "mechanic_type": "sorting_sequence",
+    "question_sequence": [
+      "Is MergeSort a stable sort?",
+      "What is the average-case time complexity of QuickSort?",
+      "Sort [9,3,7,1,5] using any method."
+    ],
+    "damage_per_wrong_answer": 25
+  }
+}

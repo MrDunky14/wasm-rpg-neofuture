@@ -1,0 +1,37 @@
+{
+  "level_name": "The Queue Caverns",
+  "concept": "queue",
+  "difficulty": 2,
+  "width": 16,
+  "height": 10,
+  "tiles": [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1],
+    [1,0,0,0,1,0,0,3,0,0,0,1,0,0,0,1],
+    [1,0,2,0,1,0,0,0,0,0,0,1,0,2,0,1],
+    [1,0,0,0,1,0,0,0,3,0,0,1,0,0,0,1],
+    [1,0,0,0,1,1,1,2,1,1,1,1,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,4,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ],
+  "player_start": { "x": 1, "y": 1 },
+  "objective": { "x": 7, "y": 8, "type": "reach_exit" },
+  "enemies": [
+    { "type": "queue_serpent",  "x": 7, "y": 3, "hp": 35, "damage": 10, "concept_question": "Enqueue 1, Enqueue 2, Dequeue → What was removed?" },
+    { "type": "fifo_guardian",  "x": 8, "y": 5, "hp": 35, "damage": 10, "concept_question": "Which end do you enqueue at — front or rear?" }
+  ],
+  "boss": {
+    "type": "queue_warden",
+    "hp": 100,
+    "damage": 20,
+    "mechanic_type": "queue_enqueue_dequeue",
+    "question_sequence": [
+      "What principle does a Queue follow?",
+      "Name a real-world example of a queue.",
+      "Enqueue A, Enqueue B, Dequeue, Enqueue C. What's at the front?"
+    ],
+    "damage_per_wrong_answer": 25
+  }
+}

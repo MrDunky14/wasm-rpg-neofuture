@@ -1,0 +1,146 @@
+"""
+Pydantic models for WASM-RPG API request/response validation.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+# ── Enums ──────────────────────────────────────────────────────────────────
+
+class ConceptTopic(str, Enum):
+    STACK = "stack"
+    QUEUE = "queue"
+    SORTING = "sorting"
+    BINARY_SEARCH = "binary_search"
+    RECURSION = "recursion"
+    LINKED_LIST = "linked_list"
+    GRAPH_TRAVERSAL = "graph_traversal"
+    MATH_ALGEBRA = "math_algebra"
+
+
+class Difficulty(int, Enum):
+    EASY = 1
+    MEDIUM = 2
+    HARD = 3
+
+
+# ── Quiz Models ────────────────────────────────────────────────────────────
+
+class QuizOption(BaseModel):
+    id: str = Field(..., description="Option identifier (a, b, c, d)")
+    text: str
+
+
+class QuizQuestion(BaseModel):
+    id: int
+    topic: ConceptTopic
+    question: str
+    options: list[QuizOption]
+    correct_option: str = Field(..., pattern=r"^[a-d]$")
+    explanation: str = ""
+
+
+class QuizAnswer(BaseModel):
+    question_id: int
+    selected_option: str = Field(..., pattern=r"^[a-d]$")
+
+
+class QuizSubmission(BaseModel):
+    student_id: str = "anonymous"
+    answers: list[QuizAnswer] = Field(..., min_length=1)
+
+
+class TopicScore(BaseModel):
+    topic: ConceptTopic
+    correct: int
+    total: int
+    passed: bool
+
+
+class QuizResult(BaseModel):
+    student_id: str
+    total_score: int
+    total_questions: int
+    percentage: float
+    topic_scores: list[TopicScore]
+    failed_topics: list[ConceptTopic]
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ── Level / Dungeon Models ─────────────────────────────────────────────────
+
+class Position(BaseModel):
+    x: int
+    y: int
+
+
+class EnemyData(BaseModel):
+    type: str
+    x: int
+    y: int
+    hp: int = 30
+    damage: int = 10
+    concept_question: str = ""
+
+
+class BossData(BaseModel):
+    type: str
+    hp: int = 100
+    damage: int = 20
+    mechanic_type: str
+    question_sequence: list[str] = Field(default_factory=list)
+    damage_per_wrong_answer: int = 25
+
+
+class ObjectiveData(BaseModel):
+    x: int
+    y: int
+    type: str = "reach_exit"
+
+
+class LevelPayload(BaseModel):
+    level_name: str
+    concept: ConceptTopic
+    difficulty: Difficulty = Difficulty.MEDIUM
+    width: int = Field(default=20, ge=10, le=50)
+    height: int = Field(default=15, ge=10, le=50)
+    tiles: list[list[int]]
+    player_start: Position
+    objective: ObjectiveData
+    enemies: list[EnemyData] = Field(default_factory=list)
+    boss: Optional[BossData] = None
+
+
+class LevelGenerateRequest(BaseModel):
+    failed_topics: list[ConceptTopic] = Field(..., min_length=1)
+    difficulty: Difficulty = Difficulty.MEDIUM
+
+
+# ── Progress Models ────────────────────────────────────────────────────────
+
+class ProgressSave(BaseModel):
+    student_id: str
+    level_name: str
+    concept: ConceptTopic
+    completed: bool = False
+    time_seconds: int = Field(default=0, ge=0)
+    score: int = Field(default=0, ge=0)
+    boss_defeated: bool = False
+
+
+class ProgressRecord(ProgressSave):
+    id: int = 0
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProgressHistory(BaseModel):
+    student_id: str
+    records: list[ProgressRecord]
+    total_levels_completed: int
+    total_bosses_defeated: int

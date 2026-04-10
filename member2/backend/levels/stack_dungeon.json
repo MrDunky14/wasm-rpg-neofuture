@@ -1,0 +1,39 @@
+{
+  "level_name": "The Tower of LIFO",
+  "concept": "stack",
+  "difficulty": 2,
+  "width": 15,
+  "height": 12,
+  "tiles": [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,2,0,0,0,0,0,1],
+    [1,1,1,1,0,1,1,1,1,1,0,1,1,1,1],
+    [1,1,1,1,0,1,1,1,1,1,0,1,1,1,1],
+    [1,1,1,1,0,0,0,0,0,0,0,1,1,1,1],
+    [1,1,1,1,1,1,0,3,0,1,1,1,1,1,1],
+    [1,1,1,1,1,1,0,0,0,0,0,2,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,0,4,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ],
+  "player_start": { "x": 1, "y": 1 },
+  "objective": { "x": 13, "y": 10, "type": "reach_exit" },
+  "enemies": [
+    { "type": "push_sentinel", "x": 7, "y": 7, "hp": 35, "damage": 10, "concept_question": "Push 5, Push 3, Pop → What was popped?" },
+    { "type": "pop_guardian",  "x": 5, "y": 3, "hp": 35, "damage": 10, "concept_question": "What does peek() do on a stack?" }
+  ],
+  "boss": {
+    "type": "stack_overlord",
+    "hp": 100,
+    "damage": 20,
+    "mechanic_type": "stack_push_pop",
+    "question_sequence": [
+      "Push A, Push B, Push C, Pop, Pop → What remains?",
+      "What principle does a Stack follow?",
+      "Implement LIFO: Push 5, Push 3, Pop. What's left on the stack?"
+    ],
+    "damage_per_wrong_answer": 25
+  }
+}

@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────────────────
+# WASM-RPG .gitignore — Production-Grade
+# ──────────────────────────────────────────────────────────
+
+# ── Toolchains (Local Dev Only) ────────────────────────────
+emsdk/                                  # Emscripten SDK (~1.8GB)
+node_modules/                           # NPM dependencies
+
+# ── Build & Compiled Artifacts ─────────────────────────────
+engine/build/                           # CMake build directory
+engine/frontend/                        # WASM compiler output location
+*.o *.a *.so *.dylib                   # Object/library files
+*.wasm                                  # WASM binaries (commit .js bridge, not .wasm)
+dist/                                   # Production builds
+build/                                  # Generic build artifacts
+
+# ── IDE & Environment ──────────────────────────────────────
+.vscode/settings.json                   # Local VS Code settings
+.vscode/launch.json                     # Local debug configs
+.env                                    # Environment variables
+.env.local                              # Local overrides
+*.swp *.swo                            # Vim temp files
+.DS_Store                               # macOS
+Thumbs.db                               # Windows
+
+# ── Python ─────────────────────────────────────────────────
+__pycache__/                            # Python cache
+*.py[cod]                               # Compiled Python
+*.egg-info/                             # Package metadata
+.pytest_cache/                          # Test cache
+venv/                                   # Virtual environments
+.venv/
+
+# ── Database (Local Dev SQLite) ────────────────────────────
+member2/backend/database.db*            # Local SQLite (not production state)
+
+# ── Private & Sensitive ────────────────────────────────────
+*.key *.pem *.pfx                       # Cryptographic keys
+.secrets/                               # Secret management folder
+
+# ── OS & Temp ──────────────────────────────────────────────
+*.log                                   # Log files
+*.tmp *.pdb                             # Temp & debug data
