@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WASM RPG Smoke Test</title>
+    <style>
+      :root {
+        --bg: #0f1419;
+        --panel: #1a232e;
+        --border: #2a394a;
+        --text: #e6edf3;
+        --muted: #9aa6b2;
+        --accent: #4ec9b0;
+        --danger: #ff7b72;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: radial-gradient(circle at 20% 0%, #213245 0%, var(--bg) 55%);
+        color: var(--text);
+      }
+
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.6rem;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+      }
+
+      .panel h2 {
+        margin: 0 0 10px;
+        font-size: 1rem;
+      }
+
+      #canvas {
+        width: 100%;
+        max-width: 640px;
+        aspect-ratio: 4 / 3;
+        display: block;
+        border: 1px solid var(--border);
+        background: #000;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      input[type="text"],
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #0f1720;
+        color: var(--text);
+        padding: 8px;
+      }
+
+      textarea {
+        min-height: 170px;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        background: #243242;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+      }
+
+      .status {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      .status.ready {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      #log {
+        margin: 0;
+        white-space: pre-wrap;
+        max-height: 260px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        background: #0a1016;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+
+      .error {
+        color: var(--danger);
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>WASM Engine Smoke Test</h1>
+      <p>Use this page to validate browser startup, JSON level loading, and ccall bridge functions.</p>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>Canvas</h2>
+          <span id="runtimeState" class="status">Runtime not initialized</span>
+          <canvas id="canvas" width="640" height="480"></canvas>
+          <div class="row" style="margin-top: 10px;">
+            <button id="btnPos">Get Player Pos</button>
+            <button id="btnWin">Check Win Flag</button>
+          </div>
+          <p id="playerPos">Player: N/A</p>
+        </section>
+
+        <section class="panel">
+          <h2>Level Loading</h2>
+          <label for="apiUrl">API URL (optional)</label>
+          <input id="apiUrl" type="text" value="http://localhost:8000/api/level/prebuilt/stack" />
+
+          <div class="row" style="margin-top: 10px;">
+            <button id="btnLoadSample">Load Sample JSON</button>
+            <button id="btnFetchApi">Fetch API + Load</button>
+            <button id="btnLoadRaw">Load JSON From Textarea</button>
+          </div>
+
+          <textarea id="levelJson"></textarea>
+        </section>
+      </div>
+
+      <section class="panel" style="margin-top: 16px;">
+        <h2>Log</h2>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script>
+      const SAMPLE_LEVEL = {
+        level_name: "Stack Surge",
+        concept: "stack",
+        difficulty: 1,
+        width: 12,
+        height: 10,
+        tiles: [
+          [1,1,1,1,1,1,1,1,1,1,1,1],
+          [1,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,3,0,0,0,0,0,0,3,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,0,0,0,0,0,0,1],
+          [1,0,0,0,0,4,0,0,0,0,0,1],
+          [1,1,1,1,1,1,1,1,1,1,1,1]
+        ],
+        player_start: { x: 1, y: 1 },
+        objective: { x: 5, y: 8, type: "reach_exit" },
+        enemies: [
+          { type: "push_sentinel", x: 2, y: 2, tile_id: 3 },
+          { type: "pop_sentinel", x: 9, y: 2, tile_id: 3 }
+        ]
+      };
+
+      const logEl = document.getElementById("log");
+      const jsonEl = document.getElementById("levelJson");
+      const runtimeStateEl = document.getElementById("runtimeState");
+      const playerPosEl = document.getElementById("playerPos");
+      const canvasEl = document.getElementById("canvas");
+
+      jsonEl.value = JSON.stringify(SAMPLE_LEVEL, null, 2);
+
+      function log(message, isError = false) {
+        const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+        if (isError) {
+          logEl.innerHTML += `<span class="error">${line}</span>\n`;
+        } else {
+          logEl.textContent += `${line}\n`;
+        }
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function isRuntimeReady() {
+        return !!(window.Module && window.__wasmRuntimeReady);
+      }
+
+      function callC(name, returnType, argTypes = [], args = []) {
+        if (!isRuntimeReady()) {
+          throw new Error("WASM runtime is not initialized yet.");
+        }
+        return window.Module.ccall(name, returnType, argTypes, args);
+      }
+
+      function updateRuntimeBadge() {
+        if (isRuntimeReady()) {
+          runtimeStateEl.textContent = "Runtime initialized";
+          runtimeStateEl.classList.add("ready");
+        } else {
+          runtimeStateEl.textContent = "Runtime not initialized";
+          runtimeStateEl.classList.remove("ready");
+        }
+      }
+
+      function loadLevelFromTextarea() {
+        const raw = jsonEl.value.trim();
+        if (!raw) {
+          log("Textarea is empty.", true);
+          return;
+        }
+
+        try {
+          JSON.parse(raw);
+          callC("load_level", null, ["string"], [raw]);
+          log("load_level() called successfully.");
+        } catch (error) {
+          log(`Failed to load JSON: ${error.message}`, true);
+        }
+      }
+
+      async function fetchAndLoadFromApi() {
+        const url = document.getElementById("apiUrl").value.trim();
+        if (!url) {
+          log("API URL is empty.", true);
+          return;
+        }
+
+        try {
+          const res = await fetch(url);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const json = await res.json();
+          jsonEl.value = JSON.stringify(json, null, 2);
+          callC("load_level", null, ["string"], [JSON.stringify(json)]);
+          log(`Loaded level from API: ${url}`);
+        } catch (error) {
+          log(`API load failed: ${error.message}`, true);
+        }
+      }
+
+      document.getElementById("btnLoadSample").addEventListener("click", () => {
+        jsonEl.value = JSON.stringify(SAMPLE_LEVEL, null, 2);
+        loadLevelFromTextarea();
+      });
+
+      document.getElementById("btnLoadRaw").addEventListener("click", loadLevelFromTextarea);
+      document.getElementById("btnFetchApi").addEventListener("click", fetchAndLoadFromApi);
+
+      document.getElementById("btnPos").addEventListener("click", () => {
+        try {
+          const pos = callC("get_player_pos", "string", [], []);
+          playerPosEl.textContent = pos;
+          log(`get_player_pos() => ${pos}`);
+        } catch (error) {
+          log(error.message, true);
+        }
+      });
+
+      document.getElementById("btnWin").addEventListener("click", () => {
+        try {
+          const win = callC("is_level_won", "number", [], []);
+          log(`is_level_won() => ${win}`);
+        } catch (error) {
+          log(error.message, true);
+        }
+      });
+
+      window.__wasmRuntimeReady = false;
+      window.Module = {
+        canvas: canvasEl,
+        print: (text) => log(`[WASM] ${text}`),
+        printErr: (text) => log(`[WASM-ERR] ${text}`, true),
+        onRuntimeInitialized: () => {
+          window.__wasmRuntimeReady = true;
+          updateRuntimeBadge();
+          log("WASM runtime initialized.");
+        }
+      };
+
+      updateRuntimeBadge();
+      log("Loading script: ../frontend/public/wasm/game.js");
+
+      const wasmScript = document.createElement("script");
+      wasmScript.src = "../frontend/public/wasm/game.js";
+      wasmScript.async = true;
+      wasmScript.onerror = () => {
+        log("Failed to load ../frontend/public/wasm/game.js", true);
+      };
+      document.body.appendChild(wasmScript);
+
+      setInterval(() => {
+        if (!isRuntimeReady()) {
+          return;
+        }
+        try {
+          playerPosEl.textContent = callC("get_player_pos", "string", [], []);
+        } catch {
+          // Ignore until runtime state fully stable
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>

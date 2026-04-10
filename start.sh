@@ -53,6 +53,15 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+BACKEND_ENV_FILE="$REPO_ROOT/member2/backend/.env"
+if [ -f "$BACKEND_ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$BACKEND_ENV_FILE"
+    set +a
+    echo -e "${GREEN}✅ Loaded backend env from member2/backend/.env${NC}"
+fi
+
 # Check if backend is already running
 if curl -s http://localhost:$BACKEND_PORT/health > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Backend already running on port $BACKEND_PORT${NC}"

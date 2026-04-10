@@ -30,6 +30,12 @@ class Difficulty(int, Enum):
     HARD = 3
 
 
+class GenerationMode(str, Enum):
+    PROCEDURAL = "procedural"
+    HYBRID = "hybrid"
+    PREBUILT = "prebuilt"
+
+
 # ── Quiz Models ────────────────────────────────────────────────────────────
 
 class QuizOption(BaseModel):
@@ -120,6 +126,29 @@ class LevelPayload(BaseModel):
 class LevelGenerateRequest(BaseModel):
     failed_topics: list[ConceptTopic] = Field(..., min_length=1)
     difficulty: Difficulty = Difficulty.MEDIUM
+    generation_mode: GenerationMode = GenerationMode.PROCEDURAL
+    width: Optional[int] = Field(default=None, ge=10, le=50)
+    height: Optional[int] = Field(default=None, ge=10, le=50)
+    seed: Optional[int] = None
+
+
+# ── Lesson Models ──────────────────────────────────────────────────────────
+
+class LessonGenerateRequest(BaseModel):
+    student_id: str = "anonymous"
+    topic: ConceptTopic
+    failed_concepts: list[str] = Field(default_factory=list, max_length=8)
+
+
+class LessonResponse(BaseModel):
+    topic: ConceptTopic
+    title: str
+    explanation: str
+    pseudocode: str
+    example: str
+    checkpoints: list[str] = Field(default_factory=list)
+    estimated_time_min: int = Field(default=5, ge=3, le=15)
+    source: str = "fallback"
 
 
 # ── Progress Models ────────────────────────────────────────────────────────

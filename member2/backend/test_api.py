@@ -1,4 +1,5 @@
 """Extended API test — validates all endpoints including new improvements."""
+from collections import deque
 import json
 import urllib.request
 
@@ -13,6 +14,59 @@ def post(path, data):
     req = urllib.request.Request(f"{BASE}{path}", data=body, headers={"Content-Type": "application/json"})
     r = urllib.request.urlopen(req)
     return json.loads(r.read())
+
+
+def _is_reachable(level):
+    tiles = level["tiles"]
+    width = level["width"]
+    height = level["height"]
+    start = level["player_start"]
+    objective = level["objective"]
+
+    sx, sy = start["x"], start["y"]
+    ox, oy = objective["x"], objective["y"]
+
+    if not (0 <= sx < width and 0 <= sy < height):
+        return False
+    if not (0 <= ox < width and 0 <= oy < height):
+        return False
+
+    walkable = {0, 2, 3, 4}
+    if tiles[sy][sx] not in walkable or tiles[oy][ox] not in walkable:
+        return False
+
+    seen = {(sx, sy)}
+    q = deque([(sx, sy)])
+    while q:
+        x, y = q.popleft()
+        if (x, y) == (ox, oy):
+            return True
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if nx < 0 or ny < 0 or nx >= width or ny >= height:
+                continue
+            if (nx, ny) in seen:
+                continue
+            if tiles[ny][nx] not in walkable:
+                continue
+            seen.add((nx, ny))
+            q.append((nx, ny))
+
+    return False
+
+
+def _level_signature(level):
+    enemies = sorted((e["x"], e["y"], e.get("type", "")) for e in level.get("enemies", []))
+    return json.dumps(
+        {
+            "width": level["width"],
+            "height": level["height"],
+            "tiles": level["tiles"],
+            "player_start": level["player_start"],
+            "objective": level["objective"],
+            "enemies": enemies,
+        },
+        sort_keys=True,
+    )
 
 passed = 0
 failed = 0
@@ -93,14 +147,48 @@ test("level name correct", stack_level["level_name"] == "The Tower of LIFO")
 test("has tiles", len(stack_level["tiles"]) > 0)
 test("has boss", stack_level["boss"] is not None)
 
-# Test 10: Generate level from failed topics (uses prebuilt)
-print("\nTEST 10: POST /api/level/generate (with prebuilt fallback)")
-levels = post("/api/level/generate", {
+# Test 10: Generate level from failed topics (procedural-first)
+print("\nTEST 10: POST /api/level/generate (procedural-first)")
+base_payload = {
     "failed_topics": ["stack"],
-    "difficulty": 2
-})
+    "difficulty": 2,
+    "width": 26,
+    "height": 18,
+    "seed": 42,
+}
+levels = post("/api/level/generate", base_payload)
 test("1 level generated", len(levels) == 1)
-test("prebuilt stack used", levels[0]["level_name"] == "The Tower of LIFO")
+test("procedural dimensions honored", levels[0]["width"] == 26 and levels[0]["height"] == 18)
+test("objective reachable", _is_reachable(levels[0]))
+
+# Test 10b: Deterministic generation with the same seed
+print("\nTEST 10b: Deterministic generation with seed")
+levels_same_seed = post("/api/level/generate", base_payload)
+test(
+    "same seed produces same layout",
+    _level_signature(levels_same_seed[0]) == _level_signature(levels[0]),
+)
+
+# Test 10c: Different seed should alter layout
+print("\nTEST 10c: Different seed variation")
+levels_diff_seed = post("/api/level/generate", {**base_payload, "seed": 43})
+test(
+    "different seed changes layout",
+    _level_signature(levels_diff_seed[0]) != _level_signature(levels[0]),
+)
+
+# Test 10d: Prebuilt mode can still be requested explicitly
+print("\nTEST 10d: POST /api/level/generate (prebuilt mode)")
+prebuilt_mode = post("/api/level/generate", {
+    "failed_topics": ["stack"],
+    "difficulty": 2,
+    "generation_mode": "prebuilt",
+    "width": 26,
+    "height": 18,
+    "seed": 42,
+})
+test("prebuilt mode returns one level", len(prebuilt_mode) == 1)
+test("prebuilt mode returns curated stack level", prebuilt_mode[0]["level_name"] == "The Tower of LIFO")
 
 # Test 11: Level preview
 print("\nTEST 11: GET /api/level/preview?topic=queue")
@@ -111,6 +199,7 @@ test("queue prebuilt used", preview["level_name"] == "The Queue Caverns")
 print("\nTEST 12: GET /api/level/preview?topic=recursion&use_prebuilt=false")
 proc = get("/api/level/preview?topic=recursion&use_prebuilt=false")
 test("procedural fallback works", proc["level_name"] == "The Infinite Descent")
+test("preview layout is reachable", _is_reachable(proc))
 
 # Test 13: Progress save
 print("\nTEST 13: POST /api/progress/save")

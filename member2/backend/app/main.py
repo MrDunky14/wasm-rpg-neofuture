@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import close_db
-from app.routes import level, progress, quiz
+from app.routes import lesson, level, progress, quiz
 
 
 @asynccontextmanager
@@ -53,6 +53,7 @@ app.add_middleware(
 app.include_router(quiz.router)
 app.include_router(level.router)
 app.include_router(progress.router)
+app.include_router(lesson.router)
 
 
 # ── Health / Root ────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ async def root():
             "submit": "/api/quiz/submit",
             "level": "/api/level/generate",
             "preview": "/api/level/preview",
+            "lesson": "/api/lesson/generate",
             "progress": "/api/progress/{student_id}",
             "docs": "/docs",
         },

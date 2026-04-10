@@ -1,39 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-type Position = { x: number; y: number };
-
-type Enemy = {
-  x: number;
-  y: number;
-  type: string;
-  hp?: number;
-  damage?: number;
-};
-
-type Boss = {
-  type: string;
-  hp?: number;
-  damage?: number;
-  mechanic_type?: string;
-  question_sequence?: string[];
-};
-
-type LevelData = {
-  level_name: string;
-  concept: string;
-  difficulty: number;
-  width: number;
-  height: number;
-  tiles: number[][];
-  player_start: Position;
-  objective: Position & { type?: string };
-  enemies: Enemy[];
-  boss?: Boss;
-};
+import api from '../lib/api';
+import type { Enemy, LevelData, Position } from '../types/level';
 
 type GameProps = {
   level: LevelData;
+  studentId?: string;
 };
 
 const TILE_SIZE = 28;
@@ -48,7 +20,7 @@ const tileStyle: Record<number, string> = {
 
 const posKey = (x: number, y: number) => `${x},${y}`;
 
-const Game = ({ level }: GameProps) => {
+const Game = ({ level, studentId }: GameProps) => {
   const navigate = useNavigate();
   const [playerPos, setPlayerPos] = useState<Position>({ x: 0, y: 0 });
   const [playerHp, setPlayerHp] = useState(100);
@@ -57,6 +29,12 @@ const Game = ({ level }: GameProps) => {
   const [message, setMessage] = useState('Navigate to the objective to clear the dungeon.');
   const [encounteredEnemies, setEncounteredEnemies] = useState<Record<string, boolean>>({});
   const [bossPrompt, setBossPrompt] = useState('');
+  const [bossQuestionIndex, setBossQuestionIndex] = useState(0);
+  const [bossAnswer, setBossAnswer] = useState('');
+  const [bossDefeated, setBossDefeated] = useState(false);
+  const [runStartedAt, setRunStartedAt] = useState<number>(Date.now());
+  const [savingProgress, setSavingProgress] = useState(false);
+  const [progressSaved, setProgressSaved] = useState(false);
 
   const enemyMap = useMemo(() => {
     const map: Record<string, Enemy> = {};
@@ -71,6 +49,12 @@ const Game = ({ level }: GameProps) => {
     [level.objective?.x, level.objective?.y],
   );
 
+  const bossQuestions = useMemo(
+    () => level.boss?.question_sequence ?? [],
+    [level.boss?.question_sequence],
+  );
+  const hasBossQuestions = bossQuestions.length > 0;
+
   useEffect(() => {
     setPlayerPos(level.player_start ?? { x: 0, y: 0 });
     setPlayerHp(100);
@@ -78,6 +62,12 @@ const Game = ({ level }: GameProps) => {
     setLevelWon(false);
     setEncounteredEnemies({});
     setBossPrompt('');
+    setBossQuestionIndex(0);
+    setBossAnswer('');
+    setBossDefeated(false);
+    setProgressSaved(false);
+    setSavingProgress(false);
+    setRunStartedAt(Date.now());
     setMessage('Navigate to the objective to clear the dungeon.');
   }, [level]);
 
@@ -111,9 +101,10 @@ const Game = ({ level }: GameProps) => {
 
     if (key === objectiveKey && !levelWon) {
       setLevelWon(true);
-      if (level.boss?.question_sequence?.length) {
-        setBossPrompt(level.boss.question_sequence[0]);
-        setMessage('Objective reached. Boss challenge unlocked.');
+      if (hasBossQuestions) {
+        setBossQuestionIndex(0);
+        setBossPrompt(bossQuestions[0]);
+        setMessage(`Objective reached. Boss challenge started (1/${bossQuestions.length}).`);
       } else {
         setMessage('Objective reached. Level complete.');
       }
@@ -126,7 +117,92 @@ const Game = ({ level }: GameProps) => {
       setPlayerHp((hp) => Math.max(0, hp - damage));
       setMessage(`Enemy encounter: ${enemyMap[key].type}. You took ${damage} damage.`);
     }
-  }, [encounteredEnemies, enemyMap, level.boss, levelWon, objectiveKey, playerPos]);
+  }, [bossQuestions, encounteredEnemies, enemyMap, hasBossQuestions, levelWon, objectiveKey, playerPos]);
+
+  const submitBossAnswer = useCallback(() => {
+    if (!hasBossQuestions || bossDefeated) {
+      return;
+    }
+
+    if (!bossAnswer.trim()) {
+      setMessage('Write a short answer before continuing the boss fight.');
+      return;
+    }
+
+    if (bossQuestionIndex >= bossQuestions.length - 1) {
+      setBossDefeated(true);
+      setBossPrompt('');
+      setBossAnswer('');
+      setMessage('Boss defeated. Dungeon mastered.');
+      return;
+    }
+
+    const nextIndex = bossQuestionIndex + 1;
+    setBossQuestionIndex(nextIndex);
+    setBossPrompt(bossQuestions[nextIndex]);
+    setBossAnswer('');
+    setMessage(`Boss challenge advanced (${nextIndex + 1}/${bossQuestions.length}).`);
+  }, [bossAnswer, bossDefeated, bossQuestionIndex, bossQuestions, hasBossQuestions]);
+
+  useEffect(() => {
+    const shouldSave = levelWon && (!hasBossQuestions || bossDefeated);
+    if (!shouldSave || progressSaved || savingProgress) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const saveRun = async () => {
+      setSavingProgress(true);
+
+      try {
+        const elapsedSeconds = Math.max(1, Math.round((Date.now() - runStartedAt) / 1000));
+        const computedScore = Math.max(10, 150 - moves * 2 + (bossDefeated ? 50 : 20) + Math.max(playerHp, 0));
+
+        await api.post('/api/progress/save', {
+          student_id: studentId?.trim() || 'anonymous',
+          level_name: level.level_name,
+          concept: level.concept,
+          completed: true,
+          time_seconds: elapsedSeconds,
+          score: computedScore,
+          boss_defeated: bossDefeated,
+        });
+
+        if (!cancelled) {
+          setProgressSaved(true);
+          setMessage('Run complete. Progress saved to Adventure Log.');
+        }
+      } catch (saveError) {
+        console.error(saveError);
+        if (!cancelled) {
+          setMessage('Run complete, but progress could not be saved.');
+        }
+      } finally {
+        if (!cancelled) {
+          setSavingProgress(false);
+        }
+      }
+    };
+
+    void saveRun();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    bossDefeated,
+    hasBossQuestions,
+    level.concept,
+    level.level_name,
+    levelWon,
+    moves,
+    playerHp,
+    progressSaved,
+    runStartedAt,
+    savingProgress,
+    studentId,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -276,18 +352,42 @@ const Game = ({ level }: GameProps) => {
                 <div className="flex items-start gap-2">
                   <img src="/game-assets/boss-face.png" alt="Boss portrait" className="w-8 h-8 object-contain mt-0.5" />
                   <div>
-                    <div className="font-pixel text-[7px] text-danger tracking-widest mb-1">BOSS QUESTION</div>
+                    <div className="font-pixel text-[7px] text-danger tracking-widest mb-1">
+                      BOSS QUESTION {bossQuestionIndex + 1}/{bossQuestions.length}
+                    </div>
                     <p className="text-xs text-gray-300 leading-relaxed">{bossPrompt}</p>
+                    <textarea
+                      value={bossAnswer}
+                      onChange={(event) => setBossAnswer(event.target.value)}
+                      rows={2}
+                      placeholder="Type your answer to advance..."
+                      className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
+                    />
+                    <button className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2" onClick={submitBossAnswer}>
+                      Submit Boss Answer
+                    </button>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {levelWon && (
+          {levelWon && hasBossQuestions && !bossDefeated && (
+            <div className="rounded p-3 border border-danger/40 bg-danger/10">
+              <div className="font-pixel text-[8px] text-danger tracking-widest">BOSS ACTIVE</div>
+              <p className="text-xs text-gray-200 mt-1">Answer each boss question to finish the run.</p>
+            </div>
+          )}
+
+          {levelWon && (!hasBossQuestions || bossDefeated) && (
             <div className="rounded p-3 border border-success/40 bg-success/10">
-              <div className="font-pixel text-[8px] text-success tracking-widest">LEVEL COMPLETE</div>
-              <p className="text-xs text-gray-200 mt-1">You reached the objective and unlocked the boss prompt.</p>
+              <div className="font-pixel text-[8px] text-success tracking-widest">RUN COMPLETE</div>
+              <p className="text-xs text-gray-200 mt-1">
+                {savingProgress ? 'Saving your run...' : progressSaved ? 'Saved. Check your Adventure Log.' : 'Completed.'}
+              </p>
+              <button className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-3" onClick={() => navigate('/progress')}>
+                Open Adventure Log
+              </button>
             </div>
           )}
 

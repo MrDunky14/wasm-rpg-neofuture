@@ -18,10 +18,11 @@ from fastapi import APIRouter, HTTPException, Query
 from app.models.schemas import (
     ConceptTopic,
     Difficulty,
+    GenerationMode,
     LevelGenerateRequest,
     LevelPayload,
 )
-from app.services.level_generator import generate_level, generate_levels_for_failures
+from app.services.level_generator import generate_level
 
 router = APIRouter(prefix="/api/level", tags=["Level Generation"])
 
@@ -48,24 +49,48 @@ def _load_prebuilt(topic: str) -> dict | None:
         return json.load(f)
 
 
+def _derive_topic_seed(base_seed: int | None, index: int, topic: ConceptTopic) -> int | None:
+    """Build a deterministic per-topic seed from one base seed."""
+    if base_seed is None:
+        return None
+    topic_salt = sum((i + 1) * ord(ch) for i, ch in enumerate(topic.value))
+    return int(base_seed) + (index * 7919) + topic_salt
+
+
 @router.post("/generate", response_model=list[LevelPayload])
 async def generate_levels(request: LevelGenerateRequest):
     """
     Generate dungeon levels based on the student's failed quiz topics.
 
-    Uses pre-built handcrafted levels when available (more reliable for demos),
-    falls back to procedural generation for topics without pre-built levels.
+    Default mode is procedural-first for better variety.
+    Modes:
+      - procedural: always procedural generation
+      - hybrid: pre-built when available, procedural fallback
+      - prebuilt: attempt pre-built first, procedural fallback if missing
     """
+    width = request.width or 20
+    height = request.height or 15
+    mode = request.generation_mode
+
     levels = []
-    for topic in request.failed_topics:
-        # Try pre-built first (more reliable for demo)
-        prebuilt = _load_prebuilt(topic.value)
-        if prebuilt:
+    for idx, topic in enumerate(request.failed_topics):
+        level_seed = _derive_topic_seed(request.seed, idx, topic)
+
+        use_prebuilt = mode in (GenerationMode.HYBRID, GenerationMode.PREBUILT)
+        prebuilt = _load_prebuilt(topic.value) if use_prebuilt else None
+
+        if prebuilt is not None:
             levels.append(prebuilt)
-        else:
-            # Fallback to procedural generation
-            level = generate_level(topic, request.difficulty)
-            levels.append(level.model_dump())
+            continue
+
+        level = generate_level(
+            topic,
+            request.difficulty,
+            width=width,
+            height=height,
+            seed=level_seed,
+        )
+        levels.append(level.model_dump())
     return levels
 
 

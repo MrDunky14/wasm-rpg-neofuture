@@ -14,6 +14,7 @@ Design decisions:
 
 from __future__ import annotations
 
+from collections import deque
 import random
 from typing import Any
 
@@ -122,139 +123,395 @@ TOPIC_THEMES: dict[ConceptTopic, dict[str, Any]] = {
 }
 
 
-# ── Dungeon templates (tile layouts) ─────────────────────────────────────
+# ── Procedural dungeon generation ────────────────────────────────────────
+
+FLOOR = 0
+WALL = 1
+DOOR = 2
+ENEMY_SPAWN = 3
+OBJECTIVE = 4
+
+Room = tuple[int, int, int, int]  # (x, y, width, height)
+Point = tuple[int, int]            # (x, y)
+
+
+def _is_interior(x: int, y: int, width: int, height: int) -> bool:
+    return 0 < x < width - 1 and 0 < y < height - 1
+
+
+def _is_walkable(tile: int) -> bool:
+    return tile in (FLOOR, DOOR, ENEMY_SPAWN, OBJECTIVE)
+
+
+def _room_center(room: Room) -> Point:
+    rx, ry, rw, rh = room
+    return rx + (rw // 2), ry + (rh // 2)
+
+
+def _rooms_overlap(a: Room, b: Room, padding: int = 1) -> bool:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return not (
+        ax + aw + padding <= bx
+        or bx + bw + padding <= ax
+        or ay + ah + padding <= by
+        or by + bh + padding <= ay
+    )
+
+
+def _carve_room(tiles: list[list[int]], room: Room) -> None:
+    width = len(tiles[0])
+    height = len(tiles)
+    rx, ry, rw, rh = room
+    for y in range(ry, ry + rh):
+        for x in range(rx, rx + rw):
+            if _is_interior(x, y, width, height):
+                tiles[y][x] = FLOOR
+
+
+def _carve_corridor(
+    tiles: list[list[int]],
+    start: Point,
+    end: Point,
+    horizontal_first: bool,
+) -> list[Point]:
+    width = len(tiles[0])
+    height = len(tiles)
+
+    x, y = start
+    tx, ty = end
+    carved: list[Point] = []
+
+    def carve(px: int, py: int) -> None:
+        if _is_interior(px, py, width, height):
+            if tiles[py][px] == WALL:
+                tiles[py][px] = FLOOR
+            carved.append((px, py))
+
+    carve(x, y)
+
+    if horizontal_first:
+        while x != tx:
+            x += 1 if tx > x else -1
+            carve(x, y)
+        while y != ty:
+            y += 1 if ty > y else -1
+            carve(x, y)
+    else:
+        while y != ty:
+            y += 1 if ty > y else -1
+            carve(x, y)
+        while x != tx:
+            x += 1 if tx > x else -1
+            carve(x, y)
+
+    return carved
+
+
+def _distance_grid(tiles: list[list[int]], start: Point) -> list[list[int]]:
+    width = len(tiles[0])
+    height = len(tiles)
+    dist = [[-1] * width for _ in range(height)]
+    sx, sy = start
+
+    if not _is_interior(sx, sy, width, height) or not _is_walkable(tiles[sy][sx]):
+        return dist
+
+    queue = deque([(sx, sy)])
+    dist[sy][sx] = 0
+
+    while queue:
+        x, y = queue.popleft()
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if not _is_interior(nx, ny, width, height):
+                continue
+            if dist[ny][nx] != -1:
+                continue
+            if not _is_walkable(tiles[ny][nx]):
+                continue
+            dist[ny][nx] = dist[y][x] + 1
+            queue.append((nx, ny))
+
+    return dist
+
+
+def _layout_is_valid(
+    tiles: list[list[int]],
+    enemy_positions: list[Point],
+    objective: Point,
+    start: Point,
+) -> bool:
+    width = len(tiles[0])
+    height = len(tiles)
+    sx, sy = start
+    ox, oy = objective
+
+    if not _is_interior(sx, sy, width, height) or not _is_walkable(tiles[sy][sx]):
+        return False
+    if not _is_interior(ox, oy, width, height) or tiles[oy][ox] != OBJECTIVE:
+        return False
+
+    dist = _distance_grid(tiles, start)
+    if dist[oy][ox] == -1:
+        return False
+
+    for ex, ey in enemy_positions:
+        if not _is_interior(ex, ey, width, height):
+            return False
+        if tiles[ey][ex] != ENEMY_SPAWN:
+            return False
+        if dist[ey][ex] == -1:
+            return False
+
+    return True
+
+
+def _generate_fallback_dungeon(
+    width: int,
+    height: int,
+    num_enemies: int,
+    seed: int | None,
+) -> tuple[list[list[int]], list[Point], Point, Point]:
+    """Guaranteed-valid open layout used if procedural attempts fail."""
+    rng = random.Random(seed)
+    tiles = [[WALL] * width for _ in range(height)]
+
+    for y in range(1, height - 1):
+        for x in range(1, width - 1):
+            tiles[y][x] = FLOOR
+
+    start = (2, 2)
+    objective = (width - 3, height - 3)
+
+    enemy_pool = []
+    for y in range(1, height - 1):
+        for x in range(1, width - 1):
+            if (x, y) in (start, objective):
+                continue
+            if abs(x - start[0]) + abs(y - start[1]) < 4:
+                continue
+            if abs(x - objective[0]) + abs(y - objective[1]) < 3:
+                continue
+            enemy_pool.append((x, y))
+
+    rng.shuffle(enemy_pool)
+    enemy_positions = enemy_pool[: min(num_enemies, len(enemy_pool))]
+    for ex, ey in enemy_positions:
+        tiles[ey][ex] = ENEMY_SPAWN
+
+    ox, oy = objective
+    tiles[oy][ox] = OBJECTIVE
+    return tiles, list(enemy_positions), objective, start
+
 
 def _generate_dungeon_tiles(
     width: int, height: int, num_enemies: int, seed: int | None = None
-) -> tuple[list[list[int]], list[tuple[int, int]], tuple[int, int], tuple[int, int]]:
+) -> tuple[list[list[int]], list[Point], Point, Point]:
     """
-    Generate a simple dungeon layout.
+    Generate a room-graph dungeon layout with guaranteed connectivity.
 
     Returns: (tiles, enemy_positions, objective_position, player_start)
 
     Tile codes:
       0 = floor, 1 = wall, 2 = door, 3 = enemy_spawn, 4 = objective
     """
-    rng = random.Random(seed)
+    base_seed = seed if seed is not None else random.randrange(1, 10_000_000)
 
-    # Start with all walls
-    tiles = [[1] * width for _ in range(height)]
+    for attempt in range(8):
+        rng = random.Random(base_seed + attempt * 9973)
+        tiles = [[WALL] * width for _ in range(height)]
 
-    # Carve out rooms using a simple room-based approach
-    rooms: list[tuple[int, int, int, int]] = []  # (x, y, w, h)
+        target_rooms = max(4, min(9, (width * height) // 70))
+        room_attempts = target_rooms * 14
 
-    # Room 1: Start room (top-left area)
-    r1 = (1, 1, width // 3, height // 3)
-    rooms.append(r1)
+        min_rw = 4
+        max_rw = max(min_rw, min(width // 3, 10))
+        min_rh = 4
+        max_rh = max(min_rh, min(height // 3, 8))
 
-    # Room 2: Middle room
-    mid_x = width // 3 + 2
-    mid_y = height // 3 + 2
-    r2 = (mid_x, mid_y, width // 3, height // 3)
-    rooms.append(r2)
+        rooms: list[Room] = []
+        for _ in range(room_attempts):
+            rw = rng.randint(min_rw, max_rw)
+            rh = rng.randint(min_rh, max_rh)
 
-    # Room 3: Boss room (bottom-right area)
-    r3_x = 2 * width // 3 + 1
-    r3_y = 2 * height // 3 + 1
-    r3_w = max(min(width // 3 - 1, width - r3_x - 1), 2)
-    r3_h = max(min(height // 3 - 1, height - r3_y - 1), 2)
-    r3 = (r3_x, r3_y, r3_w, r3_h)
-    rooms.append(r3)
-
-    # Carve rooms into floor
-    for rx, ry, rw, rh in rooms:
-        for dy in range(rh):
-            for dx in range(rw):
-                ny, nx = ry + dy, rx + dx
-                if 0 < nx < width - 1 and 0 < ny < height - 1:
-                    tiles[ny][nx] = 0
-
-    # Carve corridors between rooms
-    for i in range(len(rooms) - 1):
-        x1 = rooms[i][0] + rooms[i][2] // 2
-        y1 = rooms[i][1] + rooms[i][3] // 2
-        x2 = rooms[i + 1][0] + rooms[i + 1][2] // 2
-        y2 = rooms[i + 1][1] + rooms[i + 1][3] // 2
-
-        # Horizontal then vertical corridor
-        cx = x1
-        while cx != x2:
-            if 0 < cx < width - 1 and 0 < y1 < height - 1:
-                tiles[y1][cx] = 0
-            cx += 1 if x2 > x1 else -1
-        if 0 < cx < width - 1 and 0 < y1 < height - 1:
-            tiles[y1][cx] = 0
-
-        cy = y1
-        while cy != y2:
-            if 0 < x2 < width - 1 and 0 < cy < height - 1:
-                tiles[cy][x2] = 0
-            cy += 1 if y2 > y1 else -1
-        if 0 < x2 < width - 1 and 0 < cy < height - 1:
-            tiles[cy][x2] = 0
-
-    # Place doors at corridor entrances (between rooms)
-    for i in range(len(rooms) - 1):
-        x1 = rooms[i][0] + rooms[i][2] // 2
-        y1 = rooms[i][1] + rooms[i][3] // 2
-        x2 = rooms[i + 1][0] + rooms[i + 1][2] // 2
-        door_x = (x1 + x2) // 2
-        door_y = y1
-        if 0 < door_x < width - 1 and 0 < door_y < height - 1:
-            tiles[door_y][door_x] = 2
-
-    # Determine player start position from center of start room
-    start_x = r1[0] + r1[2] // 2
-    start_y = r1[1] + r1[3] // 2
-    start_x = max(1, min(start_x, width - 2))
-    start_y = max(1, min(start_y, height - 2))
-    # Ensure player starts on a floor tile
-    if tiles[start_y][start_x] != 0:
-        # Fallback: find nearest floor tile in start room
-        for dy in range(r1[3]):
-            for dx in range(r1[2]):
-                ny, nx = r1[1] + dy, r1[0] + dx
-                if 0 < nx < width - 1 and 0 < ny < height - 1 and tiles[ny][nx] == 0:
-                    start_x, start_y = nx, ny
-                    break
-            else:
+            if rw >= width - 2 or rh >= height - 2:
                 continue
-            break
 
-    # Place enemies in the middle room
-    enemy_positions: list[tuple[int, int]] = []
-    floor_cells_room2 = []
-    for dy in range(r2[3]):
-        for dx in range(r2[2]):
-            ny, nx = r2[1] + dy, r2[0] + dx
-            if 0 < nx < width - 1 and 0 < ny < height - 1 and tiles[ny][nx] == 0:
-                floor_cells_room2.append((nx, ny))
+            rx = rng.randint(1, width - rw - 1)
+            ry = rng.randint(1, height - rh - 1)
+            candidate = (rx, ry, rw, rh)
 
-    if floor_cells_room2:
-        chosen = rng.sample(floor_cells_room2, min(num_enemies, len(floor_cells_room2)))
-        for ex, ey in chosen:
-            tiles[ey][ex] = 3
+            if any(_rooms_overlap(candidate, existing, padding=1) for existing in rooms):
+                continue
+
+            rooms.append(candidate)
+            if len(rooms) >= target_rooms:
+                break
+
+        if len(rooms) < 3:
+            continue
+
+        for room in rooms:
+            _carve_room(tiles, room)
+
+        centers = [_room_center(room) for room in rooms]
+
+        connected = {0}
+        links: list[tuple[int, int]] = []
+
+        # Build a sparse backbone so every room is reachable.
+        while len(connected) < len(rooms):
+            best: tuple[int, int, int] | None = None
+            for i in connected:
+                cx, cy = centers[i]
+                for j in range(len(rooms)):
+                    if j in connected:
+                        continue
+                    tx, ty = centers[j]
+                    dist = abs(cx - tx) + abs(cy - ty)
+                    if best is None or dist < best[0]:
+                        best = (dist, i, j)
+
+            if best is None:
+                break
+
+            _, src, dst = best
+            links.append((src, dst))
+            connected.add(dst)
+
+        if len(connected) != len(rooms):
+            continue
+
+        existing_pairs = {tuple(sorted(link)) for link in links}
+        pair_pool = [(i, j) for i in range(len(rooms)) for j in range(i + 1, len(rooms))]
+        rng.shuffle(pair_pool)
+        extra_links = max(1, len(rooms) // 4)
+        added = 0
+        for pair in pair_pool:
+            if pair in existing_pairs:
+                continue
+            if rng.random() > 0.28:
+                continue
+            links.append(pair)
+            existing_pairs.add(pair)
+            added += 1
+            if added >= extra_links:
+                break
+
+        for src, dst in links:
+            corridor = _carve_corridor(
+                tiles,
+                centers[src],
+                centers[dst],
+                horizontal_first=(rng.random() < 0.5),
+            )
+
+            if len(corridor) > 4 and rng.random() < 0.7:
+                door_idx = max(1, min(len(corridor) - 2, len(corridor) // 2))
+                dx, dy = corridor[door_idx]
+                if tiles[dy][dx] == FLOOR:
+                    tiles[dy][dx] = DOOR
+
+        start_room_idx = min(range(len(rooms)), key=lambda i: centers[i][0] + centers[i][1])
+        start_room = rooms[start_room_idx]
+        start_candidates = [
+            (x, y)
+            for y in range(start_room[1], start_room[1] + start_room[3])
+            for x in range(start_room[0], start_room[0] + start_room[2])
+            if _is_interior(x, y, width, height) and tiles[y][x] in (FLOOR, DOOR)
+        ]
+        if not start_candidates:
+            continue
+
+        start_x, start_y = rng.choice(start_candidates)
+        if tiles[start_y][start_x] == DOOR:
+            tiles[start_y][start_x] = FLOOR
+
+        distances = _distance_grid(tiles, (start_x, start_y))
+
+        room_distance_order = sorted(
+            range(len(rooms)),
+            key=lambda i: abs(centers[i][0] - centers[start_room_idx][0])
+            + abs(centers[i][1] - centers[start_room_idx][1]),
+            reverse=True,
+        )
+        objective_room_idx = next((idx for idx in room_distance_order if idx != start_room_idx), start_room_idx)
+        objective_room = rooms[objective_room_idx]
+
+        objective_candidates = [
+            (x, y)
+            for y in range(objective_room[1], objective_room[1] + objective_room[3])
+            for x in range(objective_room[0], objective_room[0] + objective_room[2])
+            if _is_interior(x, y, width, height)
+            and tiles[y][x] in (FLOOR, DOOR)
+            and distances[y][x] > 0
+        ]
+
+        if not objective_candidates:
+            objective_candidates = [
+                (x, y)
+                for y in range(1, height - 1)
+                for x in range(1, width - 1)
+                if tiles[y][x] in (FLOOR, DOOR) and distances[y][x] > 0
+            ]
+
+        if not objective_candidates:
+            continue
+
+        farthest = max(distances[y][x] for x, y in objective_candidates)
+        far_candidates = [
+            (x, y)
+            for x, y in objective_candidates
+            if distances[y][x] >= max(1, farthest - 2)
+        ]
+        obj_x, obj_y = rng.choice(far_candidates)
+        tiles[obj_y][obj_x] = OBJECTIVE
+
+        enemy_candidates: list[tuple[float, int, int]] = []
+        for y in range(1, height - 1):
+            for x in range(1, width - 1):
+                if tiles[y][x] != FLOOR:
+                    continue
+                if (x, y) == (start_x, start_y):
+                    continue
+                dist_from_start = distances[y][x]
+                if dist_from_start < 3:
+                    continue
+                if abs(x - obj_x) + abs(y - obj_y) < 3:
+                    continue
+                score = dist_from_start + rng.random()
+                enemy_candidates.append((score, x, y))
+
+        enemy_candidates.sort(reverse=True)
+        enemy_positions: list[Point] = []
+        for _, ex, ey in enemy_candidates:
+            if len(enemy_positions) >= num_enemies:
+                break
+            if any(abs(ex - px) + abs(ey - py) < 2 for px, py in enemy_positions):
+                continue
+            tiles[ey][ex] = ENEMY_SPAWN
             enemy_positions.append((ex, ey))
 
-    # Place objective in boss room — ensure it's on a floor tile
-    obj_x = r3[0] + r3[2] // 2
-    obj_y = r3[1] + r3[3] // 2
-    obj_x = max(1, min(obj_x, width - 2))
-    obj_y = max(1, min(obj_y, height - 2))
-    if tiles[obj_y][obj_x] != 0:
-        # Fallback: scan boss room for any floor tile
-        for dy in range(r3[3]):
-            for dx in range(r3[2]):
-                ny, nx = r3[1] + dy, r3[0] + dx
-                if 0 < nx < width - 1 and 0 < ny < height - 1 and tiles[ny][nx] == 0:
-                    obj_x, obj_y = nx, ny
+        if len(enemy_positions) < num_enemies:
+            fallback_enemy_cells = [
+                (x, y)
+                for y in range(1, height - 1)
+                for x in range(1, width - 1)
+                if tiles[y][x] == FLOOR
+                and (x, y) not in {(start_x, start_y), (obj_x, obj_y)}
+                and distances[y][x] > 0
+            ]
+            rng.shuffle(fallback_enemy_cells)
+            for ex, ey in fallback_enemy_cells:
+                if len(enemy_positions) >= num_enemies:
                     break
-            else:
-                continue
-            break
-    tiles[obj_y][obj_x] = 4
+                tiles[ey][ex] = ENEMY_SPAWN
+                enemy_positions.append((ex, ey))
 
-    return tiles, enemy_positions, (obj_x, obj_y), (start_x, start_y)
+        if _layout_is_valid(tiles, enemy_positions, (obj_x, obj_y), (start_x, start_y)):
+            return tiles, enemy_positions, (obj_x, obj_y), (start_x, start_y)
+
+    return _generate_fallback_dungeon(width, height, num_enemies, seed)
 
 
 # ── Difficulty scaling ───────────────────────────────────────────────────

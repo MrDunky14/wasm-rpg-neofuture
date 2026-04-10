@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
+import type { LevelData } from '../types/level';
 
 type TopicScore = {
   topic: string;
@@ -19,11 +20,16 @@ type QuizResult = {
 
 type ResultsProps = {
   quizResult: QuizResult | null;
-  onEnterDungeon: (level: any) => void;
+  onEnterDungeon: (entry: {
+    level: LevelData;
+    topic: string;
+    failedConcepts: string[];
+    studentId: string;
+  }) => void;
 };
 
 const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
-  const [level, setLevel] = useState<any>(null);
+  const [level, setLevel] = useState<LevelData | null>(null);
   const [levelError, setLevelError] = useState('');
   const [levelLoading, setLevelLoading] = useState(false);
 
@@ -41,7 +47,7 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
     setLevelLoading(true);
     setLevelError('');
 
-    api.post<any[]>('/api/level/generate', {
+    api.post<LevelData[]>('/api/level/generate', {
       failed_topics: quizResult.failed_topics,
       difficulty: 1,
     })
@@ -69,6 +75,7 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
   }
 
   const result = quizResult;
+  const primaryTopic = result.failed_topics[0] ?? '';
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center overflow-y-auto overflow-x-hidden pt-24 md:pt-32 pb-20 px-4 md:px-8">
@@ -114,9 +121,17 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
           {levelLoading && <p className="text-sm text-gray-300 mb-3">Generating dungeon...</p>}
 
           <div className="flex justify-end">
-            {level && (
-              <button onClick={() => onEnterDungeon(level)} className="pixel-btn">
-                Enter Dungeon
+            {level && primaryTopic && (
+              <button
+                onClick={() => onEnterDungeon({
+                  level,
+                  topic: primaryTopic,
+                  failedConcepts: result.failed_topics,
+                  studentId: result.student_id,
+                })}
+                className="pixel-btn"
+              >
+                Start Learning Run
               </button>
             )}
           </div>
