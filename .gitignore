@@ -3,41 +3,81 @@
 # ──────────────────────────────────────────────────────────
 
 # ── Toolchains (Local Dev Only) ────────────────────────────
-emsdk/                                  # Emscripten SDK (~1.8GB)
-node_modules/                           # NPM dependencies
+# Emscripten SDK (~1.8GB)
+emsdk/
+# NPM dependencies
+**/node_modules/
 
 # ── Build & Compiled Artifacts ─────────────────────────────
-engine/build/                           # CMake build directory
-engine/frontend/                        # WASM compiler output location
-*.o *.a *.so *.dylib                   # Object/library files
-*.wasm                                  # WASM binaries (commit .js bridge, not .wasm)
-dist/                                   # Production builds
-build/                                  # Generic build artifacts
+# CMake build directory
+engine/build/
+# WASM compiler output location
+engine/frontend/
+# Object/library files
+*.o
+*.a
+*.so
+*.dylib
+# WASM binaries (commit .js bridge only when intentionally needed)
+*.wasm
+# Production builds
+**/dist/
+# Generic build artifacts
+build/
+# TypeScript incremental artifacts
+*.tsbuildinfo
+# Generated Vite config outputs
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # ── IDE & Environment ──────────────────────────────────────
-.vscode/settings.json                   # Local VS Code settings
-.vscode/launch.json                     # Local debug configs
-.env                                    # Environment variables
-.env.local                              # Local overrides
-*.swp *.swo                            # Vim temp files
-.DS_Store                               # macOS
-Thumbs.db                               # Windows
+# Local VS Code settings
+.vscode/settings.json
+# Local debug configs
+.vscode/launch.json
+# Environment variables
+.env
+.env.local
+# Vim temp files
+*.swp
+*.swo
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
 
 # ── Python ─────────────────────────────────────────────────
-__pycache__/                            # Python cache
-*.py[cod]                               # Compiled Python
-*.egg-info/                             # Package metadata
-.pytest_cache/                          # Test cache
-venv/                                   # Virtual environments
+# Python cache
+__pycache__/
+# Compiled Python
+*.py[cod]
+# Package metadata
+*.egg-info/
+# Test cache
+.pytest_cache/
+# Virtual environments
+venv/
 .venv/
 
 # ── Database (Local Dev SQLite) ────────────────────────────
-member2/backend/database.db*            # Local SQLite (not production state)
+# Local SQLite (not production state)
+member2/backend/database.db*
 
 # ── Private & Sensitive ────────────────────────────────────
-*.key *.pem *.pfx                       # Cryptographic keys
-.secrets/                               # Secret management folder
+# Cryptographic keys
+*.key
+*.pem
+*.pfx
+# Secret management folder
+.secrets/
+
+# ── Archives / binary drops ────────────────────────────────
+*.rar
+*.zip
 
 # ── OS & Temp ──────────────────────────────────────────────
-*.log                                   # Log files
-*.tmp *.pdb                             # Temp & debug data
+# Log files
+*.log
+# Temp & debug data
+*.tmp
+*.pdb
