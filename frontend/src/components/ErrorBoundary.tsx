@@ -42,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-full bg-background text-white flex items-center justify-center p-4">
+        <div className="min-h-screen w-full bg-transparent text-white flex items-center justify-center p-4">
           <div className="game-panel rounded-xl p-8 text-center border border-danger/20 max-w-2xl">
             <h1 className="font-pixel text-2xl text-danger mb-4 tracking-wider">
               ⚠️ SOMETHING WENT WRONG

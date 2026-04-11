@@ -130,7 +130,7 @@ function App() {
   const [challengeCleared, setChallengeCleared] = useState(false);
 
   return (
-    <div className="min-h-screen w-full bg-background text-white">
+    <div className="min-h-screen w-full bg-transparent text-white">
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />

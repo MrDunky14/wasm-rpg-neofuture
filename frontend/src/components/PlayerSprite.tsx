@@ -10,7 +10,9 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
   hpPercentage = 100,
 }) => {
   const PLAYER_SHEET_COLUMNS = 4;
-  const PLAYER_SHEET_ROWS = 4;
+  const PLAYER_SHEET_ROWS = 8;
+  const FRAME_WIDTH = 16;
+  const FRAME_HEIGHT = 14;
 
   const getAnimationClass = () => {
     switch (animationType) {
@@ -34,16 +36,20 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
   };
 
   return (
-    <div className="relative w-[28px] h-[28px] flex items-center justify-center">
-      {/* Player sheet uses 4x4 frames (16x28 each); center one full frame in a 28x28 tile. */}
+    <div className={`relative w-[28px] h-[28px] overflow-visible flex items-center justify-center ${getAnimationClass()} ${getHealthTint()}`}>
+      {/* player-caveman.png is 64x112 => 4x8 frames of 16x14. */}
       <div
-        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[16px] h-[28px] sprite ${getAnimationClass()} ${getHealthTint()}`}
+        className="sprite"
         style={{
           backgroundImage: 'url(/game-assets/player-caveman.png)',
           backgroundSize: `${PLAYER_SHEET_COLUMNS * 100}% ${PLAYER_SHEET_ROWS * 100}%`,
           backgroundPosition: '0% 0%',
           backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
+          width: `${FRAME_WIDTH}px`,
+          height: `${FRAME_HEIGHT}px`,
+          transform: 'scale(1.8)',
+          transformOrigin: 'center bottom',
         }}
       />
     </div>

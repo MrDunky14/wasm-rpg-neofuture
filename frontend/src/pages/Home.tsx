@@ -60,7 +60,7 @@ const Home = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full min-h-screen overflow-hidden bg-[#0a0e1a]"
+      className="relative w-full min-h-screen overflow-hidden bg-transparent"
       style={{ perspective: '1200px' }}
     >
       {/* Parallax Background Layers */}
@@ -69,7 +69,10 @@ const Home = () => {
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(180deg, #1a1f3a 0%, #0a0e1a 100%)',
+            backgroundImage: "linear-gradient(180deg, rgba(6, 10, 22, 0.45) 0%, rgba(6, 10, 22, 0.65) 100%), url('/backgrounds/custom-bg.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
             transform: `translateY(${scrollY * parallaxLayers[0].speed}px)`,
           }}
         />

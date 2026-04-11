@@ -17,6 +17,20 @@ type GameProps = {
 type JudgeResult = {
   isCorrect: boolean;
   hint: string;
+  retryable?: boolean;
+  source?: string;
+};
+
+const localJudgeWithStatus = (question: string, answer: string, source: string): JudgeResult => {
+  const local = fallbackJudge(question, answer);
+  const statusPrefix = 'AI busy - graded locally.';
+  const hint = local.isCorrect ? statusPrefix : `${statusPrefix} ${local.hint}`;
+
+  return {
+    isCorrect: local.isCorrect,
+    hint,
+    source: `local:${source}`,
+  };
 };
 
 // AI-powered answer grading via backend with retry logic for rate limiting
@@ -35,6 +49,7 @@ const gradeAnswerWithAI = async (question: string, answer: string): Promise<Judg
       const responseData = response.data || {};
       let is_correct = responseData.is_correct !== undefined ? responseData.is_correct : responseData.correct;
       const reasoning = responseData.reasoning || responseData.hint;
+      const source = typeof responseData.source === 'string' ? responseData.source : undefined;
       
       if (is_correct === undefined || is_correct === null) {
         console.warn('[Grading] Invalid API response - no is_correct field:', responseData);
@@ -53,6 +68,10 @@ const gradeAnswerWithAI = async (question: string, answer: string): Promise<Judg
         console.warn('[Grading] is_correct field is not a boolean after conversion:', { is_correct, type: typeof is_correct });
         return fallbackJudge(question, answer);
       }
+
+      if (source?.startsWith('fallback:')) {
+        return localJudgeWithStatus(question, answer, source);
+      }
       
       const hint = reasoning || (is_correct ? 'Excellent!' : 'Try again—review the core concept.');
       
@@ -60,6 +79,7 @@ const gradeAnswerWithAI = async (question: string, answer: string): Promise<Judg
       return {
         isCorrect: is_correct,
         hint,
+        source,
       };
     } catch (error: any) {
       // Check for rate limiting (429) error
@@ -83,12 +103,9 @@ const gradeAnswerWithAI = async (question: string, answer: string): Promise<Judg
       console.warn('[Grading] API error:', errorMsg, 'Status:', status);
       
       if (status === 429) {
-        // Even after retries, rate limited - return lenient response to avoid damage
-        console.warn('[Grading] Rate limit persists after retries - accepting answer to avoid penalty');
-        return {
-          isCorrect: true,
-          hint: '⚠️ Server busy - your answer was accepted. Try again whenever ready.',
-        };
+        // Even after retries, keep gameplay moving with strict local grading.
+        console.warn('[Grading] Rate limit persists after retries - switching to local strict judge');
+        return localJudgeWithStatus(question, answer, 'fallback:rate_limit');
       }
       
       // Use fallback for other errors
@@ -299,6 +316,12 @@ const Game = ({ level, studentId }: GameProps) => {
       setMessage('Grading answer with AI...');
       const judgement = await gradeAnswerWithAI(question, trimmedAnswer);
 
+      if (judgement.retryable) {
+        appendCombatLog(`Enemy grading delayed (${judgement.source ?? 'temporary issue'}). No damage applied.`);
+        setMessage(judgement.hint);
+        return;
+      }
+
       if (playerHp <= 0) {
         return;
       }
@@ -388,6 +411,12 @@ const Game = ({ level, studentId }: GameProps) => {
       setMessage('Grading boss answer with AI...');
       const judgement = await gradeAnswerWithAI(currentQuestion, bossAnswer);
       console.log('[Boss Combat] Judgement:', judgement);
+
+      if (judgement.retryable) {
+        appendCombatLog(`Boss grading delayed (${judgement.source ?? 'temporary issue'}). No damage applied.`);
+        setMessage(judgement.hint);
+        return;
+      }
 
       if (playerHp <= 0) {
         return;

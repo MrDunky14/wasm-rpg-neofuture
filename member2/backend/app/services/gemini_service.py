@@ -492,12 +492,12 @@ async def grade_answer_with_ai(question: str, student_answer: str, correct_answe
     """
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not api_key:
-        # Fallback: use basic lenient heuristics
+        # Fallback: conservative verdict when AI is unavailable.
         return {
-            "is_correct": len(student_answer.strip()) > 2,
-            "confidence": 0.5,
-            "reasoning": "AI grading unavailable; using minimal validation",
-            "source": "fallback:length",
+            "is_correct": False,
+            "confidence": 0.0,
+            "reasoning": "AI grading unavailable; unable to verify answer right now",
+            "source": "fallback:no_api_key",
         }
 
     model = os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL).strip() or DEFAULT_OPENROUTER_MODEL
@@ -592,11 +592,11 @@ async def grade_answer_with_ai(question: str, student_answer: str, correct_answe
                         await asyncio.sleep(wait_seconds)
                         continue
                     else:
-                        # Final retry failed, return lenient fallback to avoid damage
+                        # Final retry failed, return conservative fallback.
                         return {
-                            "is_correct": True,
-                            "confidence": 0.3,
-                            "reasoning": "AI rate-limited; answer accepted to avoid timeout penalties",
+                            "is_correct": False,
+                            "confidence": 0.0,
+                            "reasoning": "AI rate-limited; unable to verify answer right now",
                             "source": "fallback:rate_limit",
                         }
                 else:

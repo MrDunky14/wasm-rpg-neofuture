@@ -36,7 +36,7 @@ async def grade_student_answer(request: GradeAnswerRequest) -> dict:
     Grade a free-text student answer using AI.
     
     This endpoint evaluates student responses to DSA concept questions using
-    OpenRouter's AI models. Falls back to lenient validation if AI is unavailable.
+    OpenRouter's AI models. Falls back to a conservative response if AI is unavailable.
     
     Args:
         request.question: The question the student answered
