@@ -133,7 +133,7 @@ const Quiz = ({ onSubmit }: QuizProps) => {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center overflow-y-auto overflow-x-hidden pt-24 md:pt-32 pb-20 px-4 md:px-8 with-scanlines">
-      <div className="w-full max-w-4xl z-10 space-y-5">
+      <div className="w-full max-w-7xl z-10 space-y-5">
         {/* Header Window */}
         <GBAWindow title="DIAGNOSTIC QUIZ" width="w-full">
           <div className="space-y-4">
@@ -163,53 +163,55 @@ const Quiz = ({ onSubmit }: QuizProps) => {
         )}
 
         {/* Questions */}
-        {questions.map((q, index) => (
-          <div key={q.id} className="gba-window w-full">
-            <div className="gba-window-title">
-              Q{index + 1}: {q.topic.toUpperCase()}
-            </div>
-            <div className="gba-window-content space-y-4">
-              <p className="text-sm leading-relaxed text-window-text font-inter">
-                {q.question}
-              </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          {questions.map((q, index) => (
+            <div key={q.id} className="gba-window w-full h-full">
+              <div className="gba-window-title">
+                Q{index + 1}: {q.topic.toUpperCase()}
+              </div>
+              <div className="gba-window-content space-y-4">
+                <p className="text-sm leading-relaxed text-window-text font-inter">
+                  {q.question}
+                </p>
 
-              <div className="space-y-2">
-                {q.options.map((opt) => {
-                  const selected = answers[q.id] === opt.id;
+                <div className="space-y-2">
+                  {q.options.map((opt) => {
+                    const selected = answers[q.id] === opt.id;
 
-                  return (
-                    <label
-                      key={opt.id}
-                      className={`block p-3 border-2 cursor-pointer transition-all ${
-                        selected
-                          ? 'border-primary bg-primary/20'
-                          : 'border-white/20 hover:border-primary/50 hover:bg-primary/5'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="radio"
-                          name={`q${q.id}`}
-                          value={opt.id}
-                          checked={selected}
-                          onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                          className="mt-1 cursor-pointer"
-                        />
-                        <div className="flex-1">
-                          <span className="font-pixel text-[9px] text-accent uppercase tracking-widest">
-                            Option {opt.id}
-                            {selected && ' ✓'}
-                          </span>
-                          <p className="text-sm text-gray-200 mt-1">{opt.text}</p>
+                    return (
+                      <label
+                        key={opt.id}
+                        className={`block p-3 border-2 cursor-pointer transition-all ${
+                          selected
+                            ? 'border-primary bg-primary/20'
+                            : 'border-white/20 hover:border-primary/50 hover:bg-primary/5'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name={`q${q.id}`}
+                            value={opt.id}
+                            checked={selected}
+                            onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                            className="mt-1 cursor-pointer"
+                          />
+                          <div className="flex-1">
+                            <span className="font-pixel text-[9px] text-accent uppercase tracking-widest">
+                              Option {opt.id}
+                              {selected && ' ✓'}
+                            </span>
+                            <p className="text-sm text-gray-200 mt-1">{opt.text}</p>
+                          </div>
                         </div>
-                      </div>
-                    </label>
-                  );
-                })}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
         {/* Progress & Submit */}
         <div className="space-y-3">
