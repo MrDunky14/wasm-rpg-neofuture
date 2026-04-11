@@ -419,7 +419,7 @@ const Game = ({ level, studentId }: GameProps) => {
         setIsGradingAnswer(false);
       }
     }
-  }, [appendCombatLog, applyDamage, bossAnswer, bossDefeated, bossQuestionIndex, bossQuestions, hasBossQuestions, isGradingAnswer, level.boss?.damage, level.boss?.damage_per_wrong_answer, playerHp, queueUiTimeout]);
+  }, [appendCombatLog, applyDamage, bossAnswer, bossQuestionIndex, bossQuestions, hasBossQuestions, isGradingAnswer, level.boss?.damage, level.boss?.damage_per_wrong_answer, playerHp, queueUiTimeout]);
 
   useEffect(() => {
     if (playerHp > 0) {
