@@ -69,7 +69,7 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
       <img
         src="/game-assets/player-caveman.png"
         alt="Player"
-        className={`absolute inset-0 m-auto w-6 h-6 object-contain ${getAnimationClass()} ${getHealthTint()}`}
+        className={`absolute inset-0 m-auto w-7 h-7 object-contain ${getAnimationClass()} ${getHealthTint()}`}
       />
 
       {/* Retro border effect */}
