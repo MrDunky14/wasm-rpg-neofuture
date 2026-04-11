@@ -34,14 +34,14 @@ const ENEMY_TYPES: Record<string, EnemyTypeConfig> = {
     imageUrl: '/game-assets/boss-face.png',
     colorTint: 'hue-rotate(0deg) saturate(1.5)',
     glowColor: 'rgba(239, 68, 68, 0.8)',
-    scale: 1.3,
+    scale: 1,
     rarity: 'boss',
   },
-  ' goblin': {
+  goblin: {
     imageUrl: '/game-assets/enemy-reptile.png',
     colorTint: 'hue-rotate(30deg) brightness(0.9)',
     glowColor: 'rgba(234, 179, 8, 0.8)',
-    scale: 0.95,
+    scale: 1,
     rarity: 'common',
   },
   skeleton: {
@@ -99,8 +99,8 @@ export const EnemySprite: React.FC<EnemySpriteProps> = ({
     }
   };
 
-  const scaledWidth = `${24 * config.scale}px`;
-  const scaledHeight = `${24 * config.scale}px`;
+  const scaledWidth = `${28 * config.scale}px`;
+  const scaledHeight = `${28 * config.scale}px`;
 
   return (
     <div className="relative flex flex-col items-center justify-center">
@@ -118,15 +118,16 @@ export const EnemySprite: React.FC<EnemySpriteProps> = ({
           width: scaledWidth,
           height: scaledHeight,
           animationDelay: `${animationDelay}ms`,
-          filter: config.colorTint,
         }}
       >
-        {/* Main enemy image */}
-        <img
-          src={config.imageUrl}
-          alt={enemyType}
-          className="absolute inset-0 w-full h-full object-contain"
+        {/* Main enemy image - with spritesheet frame extraction */}
+        <div
+          className="absolute inset-0 w-full h-full"
           style={{
+            backgroundImage: `url(${config.imageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: '0% 0%',
+            backgroundRepeat: 'no-repeat',
             imageRendering: 'pixelated',
             filter: config.colorTint,
           }}
