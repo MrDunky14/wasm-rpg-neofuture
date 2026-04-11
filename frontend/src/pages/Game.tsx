@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import type { Enemy, LevelData, Position } from '../types/level';
 import GameHUD from '../components/GameHUD';
+import PlayerSprite from '../components/PlayerSprite';
+import EnemySprite from '../components/EnemySprite';
 
 // Fallback heuristic judge in case API is unavailable
 import { judgeConceptAnswer as fallbackJudge } from '../lib/answerJudge';
@@ -557,24 +559,23 @@ const Game = ({ level, studentId }: GameProps) => {
                       )}
 
                       {enemy && !enemyDefeated && (
-                        <img
-                          src="/game-assets/enemy-reptile.png"
-                          alt="Enemy"
-                          className={`absolute inset-0 m-auto w-5 h-5 object-contain ${
-                            defeatingEnemyKey === key ? 'animate-shrink-out' : 'animate-idle-bob animate-alert'
-                          }`}
-                          style={{ animationDelay: `${((x + y) % 4) * 120}ms` }}
-                        />
+                        <div className="absolute inset-0 m-auto w-fit h-fit">
+                          <EnemySprite
+                            enemyType={enemy.type}
+                            isDefeating={defeatingEnemyKey === key}
+                            isAlert={true}
+                            animationDelay={((x + y) % 4) * 120}
+                          />
+                        </div>
                       )}
 
                       {isPlayer && (
-                        <img
-                          src="/game-assets/player-caveman.png"
-                          alt="Player"
-                          className={`absolute inset-0 m-auto w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] ${
-                            isDamageAnimating ? 'animate-damage-shake' : 'animate-idle-bob'
-                          }`}
-                        />
+                        <div className="absolute inset-0 m-auto w-fit h-fit">
+                          <PlayerSprite
+                            animationType={isDamageAnimating ? 'damage' : 'idle'}
+                            hpPercentage={(playerHp / 100) * 100}
+                          />
+                        </div>
                       )}
                     </div>
                   );
