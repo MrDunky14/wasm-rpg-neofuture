@@ -394,3 +394,266 @@
     animation: none !important;
   }
 }
+
+/* ======================================
+   GBA RETRO STYLING ENHANCEMENTS
+   ====================================== */
+
+/* GBA Window/Dialog Styles */
+.gba-window {
+  @apply bg-window-dark border-4 border-window-border;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+              0 4px 12px rgba(0, 0, 0, 0.8);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.gba-window-title {
+  @apply font-pixel text-[10px] text-window-text px-3 py-2 bg-window-border text-center;
+  background: linear-gradient(90deg, #06b6d4 0%, #0d9488 100%);
+  letter-spacing: 1px;
+}
+
+.gba-window-content {
+  @apply p-4 text-window-text;
+  min-height: 60px;
+  background: rgba(26, 26, 46, 0.95);
+}
+
+/* GBA Menu Selector */
+.gba-menu-item {
+  @apply font-pixel text-xs px-4 py-2 cursor-pointer transition-colors duration-100;
+}
+
+.gba-menu-item.selected {
+  @apply bg-primary/30 border-l-4 border-primary text-primary;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.3) 0%, rgba(124, 58, 237, 0.1) 100%);
+}
+
+.gba-menu-item.selected::before {
+  content: '▶ ';
+  color: #7c3aed;
+  font-weight: bold;
+}
+
+/* GBA Status Bar */
+.gba-stat-container {
+  @apply bg-window-dark border-2 border-window-border p-2;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.gba-stat-label {
+  @apply font-pixel text-[8px] text-window-border uppercase tracking-wider mb-1;
+}
+
+.gba-stat-bar {
+  @apply h-3 bg-black/50 border border-window-border relative overflow-hidden;
+  background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.gba-stat-fill {
+  @apply h-full transition-all duration-500 relative;
+  background: linear-gradient(90deg, #06b6d4 0%, #0d9488 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.gba-stat-text {
+  @apply absolute inset-0 flex items-center justify-center font-pixel text-[7px] font-bold;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+  color: #fbbf24;
+}
+
+/* GBA Button Styles - Enhanced */
+.gba-btn {
+  @apply font-pixel text-[9px] px-4 py-2 border-2 cursor-pointer select-none transition-all duration-75;
+  @apply border-amber-600 bg-gradient-to-b from-amber-500 to-amber-700 text-white;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+              0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.gba-btn:hover {
+  @apply bg-gradient-to-b from-amber-400 to-amber-600;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.6),
+              0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.gba-btn:active {
+  @apply bg-gradient-to-b from-amber-600 to-amber-700;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.3),
+              inset 0 -2px 0 rgba(255, 255, 255, 0.1),
+              0 1px 2px rgba(0, 0, 0, 0.6);
+  transform: translateY(1px);
+}
+
+.gba-btn-red {
+  @apply border-red-700 bg-gradient-to-b from-red-500 to-red-700 text-white;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+              0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.gba-btn-green {
+  @apply border-green-700 bg-gradient-to-b from-green-500 to-green-700 text-white;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+              0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* GBA Title Text */
+.gba-title {
+  @apply font-pixel text-xl text-transparent bg-clip-text;
+  background-image: linear-gradient(90deg, #06b6d4, #7c3aed, #06b6d4);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  letter-spacing: 2px;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+/* Scanline Effect - Apply to game areas */
+.with-scanlines {
+  position: relative;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+
+.with-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+}
+
+/* Sprite Container - Pixel Perfect */
+.sprite {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.sprite-lg {
+  @apply sprite;
+  image-rendering: pixelated;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* GBA Dialog Box */
+.gba-dialog {
+  @apply bg-window-dark border-4 border-window-border p-4;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.8),
+              0 4px 16px rgba(0, 0, 0, 0.8),
+              inset 0 2px 0 rgba(255, 255, 255, 0.15);
+  position: relative;
+  z-index: 100;
+}
+
+.gba-dialog-text {
+  @apply font-sans text-sm leading-relaxed text-window-text;
+  min-height: 40px;
+  line-height: 1.6;
+}
+
+.gba-dialog-arrow {
+  @apply absolute bottom-2 right-3 text-accent font-pixel text-xs animate-bounce;
+}
+
+/* Retro Card Styles */
+.retro-card {
+  @apply bg-gradient-to-br from-slate-800 to-slate-900 border-4 border-slate-600;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.1),
+              inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+              0 4px 8px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+.retro-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.02) 2px,
+    rgba(255, 255, 255, 0.02) 4px
+  );
+  pointer-events: none;
+}
+
+/* Pixel Text Pop Animation */
+@keyframes pixel-text-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(10px);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-text-pop {
+  animation: pixel-text-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Glitch Effect for error states */
+@keyframes glitch-effect {
+  0% {
+    text-shadow: -2px 0 #f59e0b, 2px 0 #06b6d4;
+  }
+  20% {
+    text-shadow: 2px 0 #f59e0b, -2px 0 #06b6d4;
+  }
+  40% {
+    text-shadow: -2px 0 #06b6d4, 2px 0 #f59e0b;
+  }
+  60% {
+    text-shadow: 2px 0 #06b6d4, -2px 0 #f59e0b;
+  }
+  80% {
+    text-shadow: -2px 0 #f59e0b, 2px 0 #06b6d4;
+  }
+  100% {
+    text-shadow: 0 0 #06b6d4, 0 0 #f59e0b;
+  }
+}
+
+.animate-glitch {
+  animation: glitch-effect 0.3s ease-in-out;
+}
+
+/* Level Up Flash */
+@keyframes level-up-flash {
+  0% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(34, 197, 94, 0.6);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-level-up {
+  animation: level-up-flash 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

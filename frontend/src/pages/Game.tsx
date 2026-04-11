@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import type { Enemy, LevelData, Position } from '../types/level';
+import GameHUD from '../components/GameHUD';
 
 // Fallback heuristic judge in case API is unavailable
 import { judgeConceptAnswer as fallbackJudge } from '../lib/answerJudge';
@@ -488,7 +489,6 @@ const Game = ({ level, studentId }: GameProps) => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [movePlayer]);
 
-  const hpWidth = `${Math.max(0, Math.min(100, playerHp))}%`;
   const totalEnemies = level.enemies?.length ?? 0;
   const defeatedEnemies = Object.keys(encounteredEnemies).length;
 
@@ -591,121 +591,83 @@ const Game = ({ level, studentId }: GameProps) => {
           </div>
         </section>
 
-        <aside className="game-panel pixel-border rounded-lg p-4 md:p-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <img src="/game-assets/player-caveman.png" alt="Player portrait" className="w-10 h-10 object-contain animate-idle-bob" />
-            <div>
-              <div className="font-pixel text-[8px] text-gray-400 tracking-widest">PLAYER</div>
-              <div className="font-pixel text-[10px] text-white tracking-wider">CAVEMAN</div>
-            </div>
-          </div>
+        <aside className="space-y-4">
+          <GameHUD
+            playerHp={playerHp}
+            maxHp={100}
+            levelName={level.level_name}
+            defeatedEnemies={defeatedEnemies}
+            totalEnemies={totalEnemies}
+            moves={moves}
+            message={message}
+            showCorrectFeedback={showCorrectFeedback}
+            combatLog={combatLog}
+            message_status={
+              showCorrectFeedback ? 'success' :
+              playerHp <= 0 ? 'danger' :
+              playerHp < 33 ? 'warning' : 'neutral'
+            }
+          />
 
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-pixel text-[7px] text-danger tracking-widest">HP</span>
-              <span className="font-pixel text-[7px] text-gray-400">{playerHp}</span>
-            </div>
-            <div className={`stat-bar ${isDamageAnimating ? 'animate-damage-flash' : ''}`}>
-              <div className="stat-bar-fill bg-danger health-bar-transition" style={{ width: hpWidth }} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 text-center">
-            <div className="game-panel rounded p-2 border border-white/[0.05]">
-              <div className="font-pixel text-[7px] text-gray-500">MOVES</div>
-              <div className="font-pixel text-[10px] text-accent mt-1">{moves}</div>
-            </div>
-            <div className="game-panel rounded p-2 border border-white/[0.05]">
-              <div className="font-pixel text-[7px] text-gray-500">ENEMIES</div>
-              <div className="font-pixel text-[10px] text-secondary mt-1">{defeatedEnemies}/{totalEnemies}</div>
-            </div>
-          </div>
-
-          <div
-            className={`game-panel rounded p-3 border border-white/[0.05] ${showCorrectFeedback ? 'animate-pulse-glow' : ''}`}
-            style={{
-              backgroundImage: "url('/game-assets/dialog-box.png')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundBlendMode: 'overlay',
-            }}
-          >
-            <div className="font-pixel text-[7px] text-gray-500 tracking-widest mb-2">MISSION</div>
-            <p className={`text-xs text-gray-200 leading-relaxed ${showCorrectFeedback ? 'text-success' : ''}`}>{message}</p>
-            {inEnemyCombat && activeEnemy && (
-              <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                <div className="flex items-start gap-2">
-                  <img src="/game-assets/enemy-reptile.png" alt="Enemy portrait" className={`w-8 h-8 object-contain mt-0.5 ${isDamageAnimating ? 'animate-bounce' : 'animate-idle-bob'}`} />
-                  <div className="w-full">
-                    <div className="font-pixel text-[7px] text-accent tracking-widest mb-1">
-                      ENEMY CHALLENGE
-                    </div>
-                    <p className="text-xs text-gray-300 leading-relaxed">
-                      {activeEnemy.concept_question?.trim() || `Defeat the ${activeEnemy.type} with a concept answer.`}
-                    </p>
-                    <textarea
-                      value={enemyAnswer}
-                      onChange={(event) => setEnemyAnswer(event.target.value)}
-                      rows={2}
-                      placeholder="Type your answer to defeat this enemy..."
-                      disabled={isGradingAnswer || playerHp <= 0}
-                      className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
-                    />
-                    <button
-                      className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
-                      onClick={submitEnemyAnswer}
-                      disabled={isGradingAnswer || playerHp <= 0}
-                    >
-                      {isGradingAnswer ? 'Grading...' : 'Submit Enemy Answer'}
-                    </button>
+          {inEnemyCombat && activeEnemy && (
+            <div className="game-panel rounded p-3 border border-white/[0.05]">
+              <div className="flex items-start gap-2">
+                <img src="/game-assets/enemy-reptile.png" alt="Enemy portrait" className={`w-8 h-8 object-contain mt-0.5 ${isDamageAnimating ? 'animate-bounce' : 'animate-idle-bob'}`} />
+                <div className="w-full">
+                  <div className="font-pixel text-[7px] text-accent tracking-widest mb-1">
+                    ENEMY CHALLENGE
                   </div>
-                </div>
-              </div>
-            )}
-            {bossPrompt && (
-              <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                <div className="flex items-start gap-2">
-                  <img src="/game-assets/boss-slime-idle.png" alt="Boss portrait" className="w-8 h-8 object-contain mt-0.5 animate-idle-bob" />
-                  <div>
-                    <div className="font-pixel text-[7px] text-danger tracking-widest mb-1">
-                      BOSS QUESTION {bossQuestionIndex + 1}/{bossQuestions.length}
-                    </div>
-                    <p className="text-xs text-gray-300 leading-relaxed">{bossPrompt}</p>
-                    <textarea
-                      value={bossAnswer}
-                      onChange={(event) => setBossAnswer(event.target.value)}
-                      rows={2}
-                      placeholder="Type your answer to advance..."
-                      disabled={isGradingAnswer || playerHp <= 0}
-                      className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
-                    />
-                    <button
-                      className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
-                      onClick={submitBossAnswer}
-                      disabled={isGradingAnswer || playerHp <= 0}
-                    >
-                      {isGradingAnswer ? 'Grading...' : 'Submit Boss Answer'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="game-panel rounded p-3 border border-white/[0.05]">
-            <div className="font-pixel text-[7px] text-gray-500 tracking-widest mb-2">HEALTH LOG</div>
-            {combatLog.length === 0 ? (
-              <p className="text-[11px] text-gray-500">No health events yet.</p>
-            ) : (
-              <div className="space-y-1">
-                {combatLog.map((entry, index) => (
-                  <p key={`${entry}-${index}`} className="text-[11px] text-gray-300 leading-relaxed">
-                    {entry}
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {activeEnemy.concept_question?.trim() || `Defeat the ${activeEnemy.type} with a concept answer.`}
                   </p>
-                ))}
+                  <textarea
+                    value={enemyAnswer}
+                    onChange={(event) => setEnemyAnswer(event.target.value)}
+                    rows={2}
+                    placeholder="Type your answer to defeat this enemy..."
+                    disabled={isGradingAnswer || playerHp <= 0}
+                    className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
+                  />
+                  <button
+                    className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
+                    onClick={submitEnemyAnswer}
+                    disabled={isGradingAnswer || playerHp <= 0}
+                  >
+                    {isGradingAnswer ? 'Grading...' : 'Submit Enemy Answer'}
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {bossPrompt && (
+            <div className="game-panel rounded p-3 border border-white/[0.05]">
+              <div className="flex items-start gap-2">
+                <img src="/game-assets/boss-slime-idle.png" alt="Boss portrait" className="w-8 h-8 object-contain mt-0.5 animate-idle-bob" />
+                <div>
+                  <div className="font-pixel text-[7px] text-danger tracking-widest mb-1">
+                    BOSS QUESTION {bossQuestionIndex + 1}/{bossQuestions.length}
+                  </div>
+                  <p className="text-xs text-gray-300 leading-relaxed">{bossPrompt}</p>
+                  <textarea
+                    value={bossAnswer}
+                    onChange={(event) => setBossAnswer(event.target.value)}
+                    rows={2}
+                    placeholder="Type your answer to advance..."
+                    disabled={isGradingAnswer || playerHp <= 0}
+                    className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
+                  />
+                  <button
+                    className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
+                    onClick={submitBossAnswer}
+                    disabled={isGradingAnswer || playerHp <= 0}
+                  >
+                    {isGradingAnswer ? 'Grading...' : 'Submit Boss Answer'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {levelWon && hasBossQuestions && !bossDefeated && (
             <div className="rounded p-3 border border-danger/40 bg-danger/10">

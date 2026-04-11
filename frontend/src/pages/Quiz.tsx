@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
+import GBAButton from '../components/GBAButton';
+import GBAWindow from '../components/GBAWindow';
 
 type QuizOption = {
   id: string;
@@ -104,9 +106,11 @@ const Quiz = ({ onSubmit }: QuizProps) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="game-panel rounded-xl px-6 py-5 border border-white/[0.08]">
-          <p className="font-pixel text-[9px] text-secondary tracking-widest">LOADING QUESTIONS...</p>
-        </div>
+        <GBAWindow title="LOADING" width="w-80">
+          <p className="font-pixel text-xs text-secondary text-center animate-pulse">
+            Loading Questions...
+          </p>
+        </GBAWindow>
       </div>
     );
   }
@@ -114,84 +118,127 @@ const Quiz = ({ onSubmit }: QuizProps) => {
   if (error && questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="game-panel rounded-xl p-6 border border-danger/40 max-w-md text-center">
-          <h2 className="font-pixel text-[10px] text-danger tracking-wider mb-3">QUIZ UNAVAILABLE</h2>
-          <p className="text-sm text-gray-300 mb-5">{error}</p>
-          <button onClick={() => window.location.reload()} className="pixel-btn">
-          Retry
-        </button>
-        </div>
+        <GBAWindow title="ERROR" width="w-96">
+          <div className="text-center space-y-4">
+            <p className="text-danger font-pixel text-[9px]">QUIZ UNAVAILABLE</p>
+            <p className="text-sm text-gray-300">{error}</p>
+            <GBAButton onClick={() => window.location.reload()} variant="red">
+              Retry
+            </GBAButton>
+          </div>
+        </GBAWindow>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center overflow-y-auto overflow-x-hidden pt-24 md:pt-32 pb-20 px-4 md:px-8">
+    <div className="relative min-h-screen w-full flex flex-col items-center overflow-y-auto overflow-x-hidden pt-24 md:pt-32 pb-20 px-4 md:px-8 with-scanlines">
       <div className="w-full max-w-4xl z-10 space-y-5">
-        <div className="game-panel pixel-border rounded-lg p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h1 className="font-pixel text-[11px] md:text-[12px] text-secondary tracking-wider">DIAGNOSTIC QUIZ</h1>
-            <p className="text-xs text-gray-400 mt-2">Answer 6 randomized questions to generate your adaptive dungeon.</p>
-          </div>
-          <div className="min-w-[220px]">
-            <label className="font-pixel text-[7px] text-gray-500 tracking-widest">STUDENT ID</label>
-            <input
-              type="text"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              placeholder="Student ID"
-              className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-3 py-2 text-sm text-white outline-none focus:border-secondary"
-            />
-          </div>
-        </div>
-
-        {error && <p className="text-danger text-sm">{error}</p>}
-
-        {questions.map((q, index) => (
-          <div key={q.id} className="game-panel rounded-xl p-5 md:p-6 border border-white/[0.08]">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h2 className="font-sans text-base md:text-lg text-white leading-relaxed">
-                {index + 1}. {q.question}
-              </h2>
-              <span className="font-pixel text-[7px] text-accent uppercase tracking-widest">{q.topic}</span>
+        {/* Header Window */}
+        <GBAWindow title="DIAGNOSTIC QUIZ" width="w-full">
+          <div className="space-y-4">
+            <p className="text-xs text-gray-200">
+              Answer 6 randomized questions to generate your adaptive dungeon.
+            </p>
+            <div>
+              <label className="font-pixel text-[8px] text-gray-400 uppercase tracking-wider block mb-2">
+                Student ID
+              </label>
+              <input
+                type="text"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                placeholder="Enter your student ID"
+                className="w-full bg-window-dark border-2 border-window-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
+          </div>
+        </GBAWindow>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-4">
-              {q.options.map((opt) => {
-                const selected = answers[q.id] === opt.id;
+        {error && (
+          <div className="gba-dialog border-danger/50 bg-red-950/20">
+            <div className="text-danger font-pixel text-[9px] mb-2">ERROR</div>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
 
-                return (
-                  <label
-                    key={opt.id}
-                    className={[
-                      'flex items-center gap-3 p-3 rounded border cursor-pointer transition-all',
-                      selected
-                        ? 'border-secondary/70 bg-secondary/10 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                        : 'border-white/[0.08] hover:border-white/20 hover:bg-white/[0.03]',
-                    ].join(' ')}
-                  >
-                    <input
-                      type="radio"
-                      name={`q${q.id}`}
-                      value={opt.id}
-                      checked={selected}
-                      onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
-                    />
-                    <span className="text-sm text-gray-200">
-                      <span className="font-pixel text-[8px] text-gray-400 mr-2 uppercase">{opt.id}</span>
-                      {opt.text}
-                    </span>
-                  </label>
-                );
-              })}
+        {/* Questions */}
+        {questions.map((q, index) => (
+          <div key={q.id} className="gba-window w-full">
+            <div className="gba-window-title">
+              Q{index + 1}: {q.topic.toUpperCase()}
+            </div>
+            <div className="gba-window-content space-y-4">
+              <p className="text-sm leading-relaxed text-window-text font-inter">
+                {q.question}
+              </p>
+
+              <div className="space-y-2">
+                {q.options.map((opt) => {
+                  const selected = answers[q.id] === opt.id;
+
+                  return (
+                    <label
+                      key={opt.id}
+                      className={`block p-3 border-2 cursor-pointer transition-all ${
+                        selected
+                          ? 'border-primary bg-primary/20'
+                          : 'border-white/20 hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name={`q${q.id}`}
+                          value={opt.id}
+                          checked={selected}
+                          onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                          className="mt-1 cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <span className="font-pixel text-[7px] text-accent uppercase tracking-widest">
+                            Option {opt.id}
+                            {selected && ' ✓'}
+                          </span>
+                          <p className="text-sm text-gray-200 mt-1">{opt.text}</p>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ))}
 
-        <div className="flex justify-end pt-2">
-          <button onClick={handleSubmit} disabled={submitting} className="pixel-btn disabled:opacity-60">
-            {submitting ? 'Submitting...' : 'Submit Quiz'}
-          </button>
+        {/* Progress & Submit */}
+        <div className="space-y-3">
+          <div className="gba-stat-container">
+            <div className="gba-stat-label">Progress</div>
+            <div className="gba-stat-bar">
+              <div
+                className="gba-stat-fill bg-gradient-to-r from-green-500 to-emerald-600"
+                style={{
+                  width: `${((Object.keys(answers).length / questions.length) * 100)}%`,
+                }}
+              >
+                <div className="gba-stat-text">
+                  {Object.keys(answers).length}/{questions.length}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <GBAButton
+              onClick={handleSubmit}
+              disabled={submitting || Object.keys(answers).length < questions.length}
+              variant="green"
+              size="lg"
+            >
+              {submitting ? 'Submitting...' : 'Submit Quiz'}
+            </GBAButton>
+          </div>
         </div>
       </div>
     </div>

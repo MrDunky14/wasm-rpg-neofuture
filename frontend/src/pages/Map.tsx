@@ -111,29 +111,31 @@ const Map = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020205] flex flex-col items-center justify-center overflow-auto p-4 md:p-8">
+    <div className="fixed inset-0 z-50 bg-[#020205] flex flex-col items-center justify-center overflow-auto p-4 md:p-8 with-scanlines">
       <button
         onClick={() => navigate('/')}
         className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-20 pixel-btn-ghost text-[7px] py-1.5 px-3 opacity-70 hover:opacity-100"
       >
-        Exit To Home
+        ◀ Back To Home
       </button>
 
       <div className="w-full max-w-6xl mt-12">
-        <h1 className="font-pixel text-[14px] md:text-[16px] text-secondary tracking-wider text-center mb-3">
-          WORLD MAP
-        </h1>
-        <p className="text-center text-gray-400 text-sm mb-8">
-          Select a dungeon to explore and master its concepts.
-        </p>
+        {/* World Map Title */}
+        <div className="text-center mb-8">
+          <h1 className="gba-title text-2xl md:text-3xl mb-3">WORLD MAP</h1>
+          <p className="text-center text-gray-400 text-sm">
+            Select a dungeon to explore and master its concepts.
+          </p>
+        </div>
 
         {error && (
           <div
-            className="rounded p-3 mb-6 border border-yellow-500/40 bg-yellow-500/10 text-yellow-200 text-xs text-center"
+            className="gba-window mb-6 border-amber-600"
             role="alert"
             aria-live="polite"
           >
-            {error}
+            <div className="gba-window-title bg-amber-600">WARNING</div>
+            <div className="gba-window-content text-amber-200">{error}</div>
           </div>
         )}
 
@@ -142,84 +144,88 @@ const Map = () => {
             {Array.from({ length: 3 }).map((_, idx) => (
               <div
                 key={`skeleton-${idx}`}
-                className="game-panel rounded-lg p-5 border border-white/[0.07] animate-pulse"
+                className="retro-card rounded-sm p-4 animate-pulse"
               >
-                <div className="w-full h-32 bg-white/5 rounded mb-4 border border-white/[0.08]" />
-                <div className="h-3 bg-white/10 rounded w-1/2 mb-3" />
-                <div className="h-2 bg-white/10 rounded w-4/5 mb-2" />
-                <div className="h-2 bg-white/10 rounded w-3/5 mb-4" />
-                <div className="h-7 bg-white/10 rounded" />
+                <div className="w-full h-32 bg-slate-700/50 rounded-sm mb-4 border-2 border-slate-600" />
+                <div className="h-3 bg-slate-700/50 rounded w-1/2 mb-3" />
+                <div className="h-2 bg-slate-700/50 rounded w-4/5 mb-2" />
+                <div className="h-2 bg-slate-700/50 rounded w-3/5 mb-4" />
+                <div className="h-6 bg-slate-700/50 rounded" />
               </div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {levels.map((level) => (
-              <div
+              <button
                 key={level.topic}
-                className="game-panel rounded-lg p-5 border border-white/[0.07] hover:border-cyan-500/50 transition-all group"
+                onClick={() => handleSelectLevel(level.topic)}
+                disabled={selectedTopic === level.topic}
+                className="retro-card rounded-sm p-0 border-4 hover:border-primary/80 transition-all group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
               >
-                {/* Level thumbnail placeholder */}
-                <div className="w-full h-32 bg-gradient-to-br from-primary/20 to-secondary/20 rounded mb-4 flex items-center justify-center border border-white/[0.1] group-hover:border-secondary/30 transition-all">
-                  <div className="text-4xl">{'🗺️'}</div>
+                {/* Card top section with icon */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 border-b-4 border-slate-600">
+                  <div className="text-4xl mb-2 group-hover:scale-110 transition-transform">
+                    {'⚔️'}
+                  </div>
+                  <h2 className="font-pixel text-xs text-window-border tracking-wider uppercase text-left">
+                    {level.topic}
+                  </h2>
                 </div>
 
-                {/* Level info */}
-                <h2 className="font-pixel text-[10px] text-white tracking-wider mb-2 uppercase">
-                  {level.topic}
-                </h2>
-                <p className="text-xs text-gray-300 mb-3 leading-relaxed">
-                  {level.description}
-                </p>
+                {/* Card content */}
+                <div className="bg-slate-900/80 p-4">
+                  <p className="text-xs text-gray-300 mb-4 text-left leading-relaxed">
+                    {level.description}
+                  </p>
 
-                {/* Level stats */}
-                <div className="space-y-2 text-[11px]">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Difficulty:</span>
-                    <span
-                      className={
-                        level.difficulty === 'Easy'
-                          ? 'text-success'
-                          : level.difficulty === 'Medium'
+                  {/* Stats Grid */}
+                  <div className="space-y-2 text-[10px] mb-4">
+                    <div className="flex justify-between items-center font-pixel">
+                      <span className="text-gray-400">DIFFICULTY:</span>
+                      <span
+                        className={
+                          level.difficulty === 'Easy'
+                            ? 'text-success'
+                            : level.difficulty === 'Medium'
                             ? 'text-accent'
                             : 'text-danger'
-                      }
-                    >
-                      {level.difficulty}
-                    </span>
+                        }
+                      >
+                        {level.difficulty}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center font-pixel">
+                      <span className="text-gray-400">ENEMIES:</span>
+                      <span className="text-secondary">{level.enemies_count}</span>
+                    </div>
+                    <div className="flex justify-between items-center font-pixel">
+                      <span className="text-gray-400">BOSS:</span>
+                      <span className="text-accent">
+                        {level.boss_present ? '✓' : '×'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Enemies:</span>
-                    <span className="text-secondary">{level.enemies_count}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Boss:</span>
-                    <span className="text-accent">
-                      {level.boss_present ? 'Yes' : 'No'}
-                    </span>
+
+                  {/* Enter Button */}
+                  <div className="gba-btn text-[8px] w-full text-center py-2 font-pixel tracking-wider">
+                    {selectedTopic === level.topic ? 'LOADING...' : 'ENTER'}
                   </div>
                 </div>
-
-                {/* Select button */}
-                <button
-                  className="pixel-btn-ghost text-[7px] py-2 px-4 w-full mt-4 group-hover:border-primary transition-all"
-                  onClick={() => handleSelectLevel(level.topic)}
-                  disabled={selectedTopic === level.topic}
-                  aria-label={`Enter ${level.topic} dungeon`}
-                >
-                  {selectedTopic === level.topic ? 'LOADING...' : 'ENTER DUNGEON'}
-                </button>
-              </div>
+              </button>
             ))}
           </div>
         )}
 
-        {/* Bottom info */}
-        <div className="mt-12 text-center text-gray-500 text-xs">
-          <p>
-            Logged in as:{' '}
-            <span className="text-secondary font-pixel">{studentId}</span>
-          </p>
+        {/* Bottom info panel */}
+        <div className="mt-12">
+          <div className="gba-window w-full md:w-96 mx-auto">
+            <div className="gba-window-title">SESSION INFO</div>
+            <div className="gba-window-content">
+              <div className="font-pixel text-[8px] text-gray-400 uppercase mb-2">PLAYER ID</div>
+              <div className="font-mono text-sm text-window-text break-all">{studentId}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
