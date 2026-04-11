@@ -295,7 +295,7 @@ const Game = ({ level, studentId }: GameProps) => {
   }, [activeEnemyKey, appendCombatLog, applyDamage, enemyAnswer, enemyMap, isGradingAnswer, playerHp, queueUiTimeout]);
 
   const submitBossAnswer = useCallback(async () => {
-    console.log('[Boss Combat] submitBossAnswer called with:', {bossQuestionIndex, bossQuestions: bossQuestions.length, isGradingAnswer, bossDefeated, playerHp});
+    console.log('[Boss Combat] submitBossAnswer called with:', {bossQuestionIndex, bossQuestionsCount: bossQuestions.length, isGradingAnswer, bossDefeated, playerHp});
     if (isGradingAnswer || !hasBossQuestions || bossDefeated || playerHp <= 0) {
       console.log('[Boss Combat] Early return - isGrading:', isGradingAnswer, 'hasQuestions:', hasBossQuestions, 'defeated:', bossDefeated, 'hp:', playerHp);
       return;
@@ -306,7 +306,19 @@ const Game = ({ level, studentId }: GameProps) => {
       return;
     }
 
+    if (!bossQuestions || bossQuestions.length === 0) {
+      console.error('[Boss Combat] ERROR: No boss questions loaded!');
+      setMessage('ERROR: Boss questions not loaded. Please refresh the page.');
+      return;
+    }
+
     const currentQuestion = bossQuestions[bossQuestionIndex] ?? '';
+    if (!currentQuestion) {
+      console.error('[Boss Combat] ERROR: Current question is empty at index', bossQuestionIndex);
+      setMessage('ERROR: Current question is missing. Please refresh.');
+      return;
+    }
+
     console.log('[Boss Combat] Q' + (bossQuestionIndex + 1) + ':', currentQuestion);
     console.log('[Boss Combat] Answer:', bossAnswer.trim());
     let releaseGradingLock = true;
