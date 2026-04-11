@@ -124,10 +124,15 @@ const Game = ({ level, studentId }: GameProps) => {
   );
 
   const bossQuestions = useMemo(
-    () => level.boss?.question_sequence ?? [],
+    () => {
+      const questions = level.boss?.question_sequence ?? [];
+      console.log('[Level Setup] Boss questions loaded:', questions);
+      return questions;
+    },
     [level.boss?.question_sequence],
   );
   const hasBossQuestions = bossQuestions.length > 0;
+  console.log('[Level Setup] Has boss questions:', hasBossQuestions, 'count:', bossQuestions.length);
   const activeEnemy = useMemo(
     () => (activeEnemyKey ? enemyMap[activeEnemyKey] : undefined),
     [activeEnemyKey, enemyMap],
@@ -290,7 +295,9 @@ const Game = ({ level, studentId }: GameProps) => {
   }, [activeEnemyKey, appendCombatLog, applyDamage, enemyAnswer, enemyMap, isGradingAnswer, playerHp, queueUiTimeout]);
 
   const submitBossAnswer = useCallback(async () => {
+    console.log('[Boss Combat] submitBossAnswer called with:', {bossQuestionIndex, bossQuestions: bossQuestions.length, isGradingAnswer, bossDefeated, playerHp});
     if (isGradingAnswer || !hasBossQuestions || bossDefeated || playerHp <= 0) {
+      console.log('[Boss Combat] Early return - isGrading:', isGradingAnswer, 'hasQuestions:', hasBossQuestions, 'defeated:', bossDefeated, 'hp:', playerHp);
       return;
     }
 
