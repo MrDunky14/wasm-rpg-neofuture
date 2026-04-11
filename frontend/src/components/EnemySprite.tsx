@@ -125,7 +125,7 @@ export const EnemySprite: React.FC<EnemySpriteProps> = ({
           className="absolute inset-0 w-full h-full"
           style={{
             backgroundImage: `url(${config.imageUrl})`,
-            backgroundSize: 'cover',
+            backgroundSize: '300% 400%',
             backgroundPosition: '0% 0%',
             backgroundRepeat: 'no-repeat',
             imageRendering: 'pixelated',
