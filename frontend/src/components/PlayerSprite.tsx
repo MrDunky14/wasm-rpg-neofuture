@@ -31,8 +31,8 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
   };
 
   return (
-    <div className="relative w-7 h-7 flex items-center justify-center">
-      {/* Pixel art player texture with GBA retro styling - using first frame from spritesheet */}
+    <div className="relative w-14 h-7 flex items-center justify-center">
+      {/* Pixel art player texture with GBA retro styling - scaled up 2x to show 8px-wide frames properly */}
       <div
         className={`absolute inset-0 sprite ${getAnimationClass()}`}
         style={{
@@ -69,7 +69,7 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
       <img
         src="/game-assets/player-caveman.png"
         alt="Player"
-        className={`absolute inset-0 m-auto w-7 h-7 object-contain ${getAnimationClass()} ${getHealthTint()}`}
+        className={`absolute inset-0 m-auto w-14 h-7 object-contain ${getAnimationClass()} ${getHealthTint()}`}
       />
 
       {/* Retro border effect */}

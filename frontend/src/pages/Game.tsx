@@ -333,6 +333,7 @@ const Game = ({ level, studentId }: GameProps) => {
       // Correct answer for boss
       setShowCorrectFeedback(true);
       appendCombatLog(`Correct boss answer ${bossQuestionIndex + 1}/${bossQuestions.length}.`);
+      console.log('[Boss Combat] Checking if final question - index:', bossQuestionIndex, 'length:', bossQuestions.length, 'comparison:', bossQuestionIndex >= bossQuestions.length - 1);
       
       if (bossQuestionIndex >= bossQuestions.length - 1) {
         console.log('[Boss Combat] All questions answered correctly. Boss defeated!');
