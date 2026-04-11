@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 const navItemClass = (active: boolean) =>
   [
-    'game-panel pixel-border px-3 md:px-4 py-2 rounded font-pixel text-[8px] md:text-[9px] tracking-wider transition-colors',
+    'game-panel pixel-border px-3 md:px-4 py-2 rounded font-pixel text-[10px] md:text-[11px] tracking-wider transition-colors',
     active ? 'text-secondary border-secondary/40' : 'text-gray-500 hover:text-white',
   ].join(' ');
 
@@ -25,24 +25,24 @@ export default function Navbar() {
                 className="w-8 h-8 md:w-10 md:h-10 object-contain"
               />
             </div>
-            <span className="absolute -bottom-1 -right-1 bg-primary text-white font-pixel text-[7px] md:text-[8px] rounded px-1.5 py-0.5 border border-background leading-none shadow-md">
+            <span className="absolute -bottom-1 -right-1 bg-primary text-white font-pixel text-[9px] md:text-[10px] rounded px-1.5 py-0.5 border border-background leading-none shadow-md">
               L1
             </span>
           </Link>
 
           <div className="hidden sm:flex flex-col gap-1">
-            <span className="font-pixel text-[8px] md:text-[9px] text-white/80 tracking-wider leading-none">
+            <span className="font-pixel text-[10px] md:text-[11px] text-white/80 tracking-wider leading-none">
               ADVENTURER
             </span>
             <div className="flex items-center gap-1.5">
-              <span className="font-pixel text-[7px] text-danger w-3">HP</span>
+              <span className="font-pixel text-[9px] text-danger w-3">HP</span>
               <div className="stat-bar w-20 md:w-28">
                 <div
                   className="stat-bar-fill bg-danger shadow-[0_0_6px_rgba(239,68,68,0.6)]"
                   style={{ width: '100%' }}
                 />
               </div>
-              <span className="font-pixel text-[7px] text-gray-500 w-10 text-right">100</span>
+              <span className="font-pixel text-[9px] text-gray-500 w-10 text-right">100</span>
             </div>
           </div>
         </div>

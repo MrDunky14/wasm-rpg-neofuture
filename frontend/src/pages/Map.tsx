@@ -114,7 +114,7 @@ const Map = () => {
     <div className="fixed inset-0 z-50 bg-[#020205] flex flex-col items-center justify-center overflow-auto p-4 md:p-8 with-scanlines">
       <button
         onClick={() => navigate('/')}
-        className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-20 pixel-btn-ghost text-[7px] py-1.5 px-3 opacity-70 hover:opacity-100"
+        className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-20 pixel-btn-ghost text-[9px] py-1.5 px-3 opacity-70 hover:opacity-100"
       >
         ◀ Back To Home
       </button>
@@ -180,7 +180,7 @@ const Map = () => {
                   </p>
 
                   {/* Stats Grid */}
-                  <div className="space-y-2 text-[10px] mb-4">
+                  <div className="space-y-2 text-[13px] mb-4">
                     <div className="flex justify-between items-center font-pixel">
                       <span className="text-gray-400">DIFFICULTY:</span>
                       <span
@@ -208,7 +208,7 @@ const Map = () => {
                   </div>
 
                   {/* Enter Button */}
-                  <div className="gba-btn text-[8px] w-full text-center py-2 font-pixel tracking-wider">
+                  <div className="gba-btn text-[10px] w-full text-center py-2 font-pixel tracking-wider">
                     {selectedTopic === level.topic ? 'LOADING...' : 'ENTER'}
                   </div>
                 </div>
@@ -222,7 +222,7 @@ const Map = () => {
           <div className="gba-window w-full md:w-96 mx-auto">
             <div className="gba-window-title">SESSION INFO</div>
             <div className="gba-window-content">
-              <div className="font-pixel text-[8px] text-gray-400 uppercase mb-2">PLAYER ID</div>
+              <div className="font-pixel text-[10px] text-gray-400 uppercase mb-2">PLAYER ID</div>
               <div className="font-mono text-sm text-window-text break-all">{studentId}</div>
             </div>
           </div>

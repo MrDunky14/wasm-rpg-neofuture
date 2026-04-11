@@ -44,7 +44,7 @@
 
 @layer components {
   .pixel-btn {
-    @apply font-pixel text-[10px] md:text-xs tracking-widest uppercase py-3 px-6 md:py-4 md:px-8 border-2 border-primary bg-primary/20 text-white cursor-pointer select-none transition-all duration-150;
+    @apply font-pixel text-[13px] md:text-sm tracking-widest uppercase py-3 px-6 md:py-4 md:px-8 border-2 border-primary bg-primary/20 text-white cursor-pointer select-none transition-all duration-150;
     image-rendering: pixelated;
     box-shadow:
       inset -2px -2px 0 rgba(0, 0, 0, 0.3),
@@ -69,7 +69,7 @@
   }
 
   .pixel-btn-ghost {
-    @apply font-pixel text-[10px] tracking-widest uppercase py-3 px-6 border-2 border-gray-600 text-gray-400 cursor-pointer select-none transition-all duration-150;
+    @apply font-pixel text-[13px] tracking-widest uppercase py-3 px-6 border-2 border-gray-600 text-gray-400 cursor-pointer select-none transition-all duration-150;
     box-shadow:
       inset -2px -2px 0 rgba(0, 0, 0, 0.2),
       inset 2px 2px 0 rgba(255, 255, 255, 0.05);
@@ -410,7 +410,7 @@
 }
 
 .gba-window-title {
-  @apply font-pixel text-[10px] text-window-text px-3 py-2 bg-window-border text-center;
+  @apply font-pixel text-[13px] text-window-text px-3 py-2 bg-window-border text-center;
   background: linear-gradient(90deg, #06b6d4 0%, #0d9488 100%);
   letter-spacing: 1px;
 }
@@ -423,7 +423,7 @@
 
 /* GBA Menu Selector */
 .gba-menu-item {
-  @apply font-pixel text-xs px-4 py-2 cursor-pointer transition-colors duration-100;
+  @apply font-pixel text-sm px-4 py-2 cursor-pointer transition-colors duration-100;
 }
 
 .gba-menu-item.selected {
@@ -444,7 +444,7 @@
 }
 
 .gba-stat-label {
-  @apply font-pixel text-[8px] text-window-border uppercase tracking-wider mb-1;
+  @apply font-pixel text-[10px] text-window-border uppercase tracking-wider mb-1;
 }
 
 .gba-stat-bar {
@@ -460,14 +460,14 @@
 }
 
 .gba-stat-text {
-  @apply absolute inset-0 flex items-center justify-center font-pixel text-[7px] font-bold;
+  @apply absolute inset-0 flex items-center justify-center font-pixel text-[9px] font-bold;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
   color: #fbbf24;
 }
 
 /* GBA Button Styles - Enhanced */
 .gba-btn {
-  @apply font-pixel text-[9px] px-4 py-2 border-2 cursor-pointer select-none transition-all duration-75;
+  @apply font-pixel text-[11px] px-4 py-2 border-2 cursor-pointer select-none transition-all duration-75;
   @apply border-amber-600 bg-gradient-to-b from-amber-500 to-amber-700 text-white;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3),
               inset 0 -2px 0 rgba(0, 0, 0, 0.5),

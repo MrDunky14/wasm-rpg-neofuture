@@ -154,7 +154,7 @@ const ChallengeRoom = ({ topic, onBack, onComplete }: ChallengeRoomProps) => {
       <div className="w-full max-w-3xl z-10">
         <div className="game-panel rounded-xl p-6 md:p-8 border border-white/[0.08]">
           <div className="text-center mb-6">
-            <span className="font-pixel text-[8px] tracking-[0.3em] text-secondary uppercase">Challenge Room</span>
+            <span className="font-pixel text-[10px] tracking-[0.3em] text-secondary uppercase">Challenge Room</span>
             <h1 className="mt-3 font-pixel text-[14px] md:text-[16px] text-white tracking-wider">APPLY WHAT YOU LEARNED</h1>
             <p className="mt-3 text-sm text-gray-300 capitalize">Topic focus: {normalizedTopic.replace(/_/g, ' ')}</p>
           </div>
@@ -163,8 +163,8 @@ const ChallengeRoom = ({ topic, onBack, onComplete }: ChallengeRoomProps) => {
             <div className="space-y-4">
               <div className="game-panel rounded-lg p-4 border border-white/[0.06]">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-pixel text-[9px] text-accent tracking-wider">SORTING TRIAL</h2>
-                  <span className="font-pixel text-[8px] text-gray-400">MOVES: {moves}</span>
+                  <h2 className="font-pixel text-[11px] text-accent tracking-wider">SORTING TRIAL</h2>
+                  <span className="font-pixel text-[10px] text-gray-400">MOVES: {moves}</span>
                 </div>
                 <p className="text-sm text-gray-300 mb-4">Sort the array in ascending order by swapping two values at a time.</p>
 
@@ -202,7 +202,7 @@ const ChallengeRoom = ({ topic, onBack, onComplete }: ChallengeRoomProps) => {
           ) : (
             <div className="space-y-4">
               <div className="game-panel rounded-lg p-4 border border-white/[0.06]">
-                <h2 className="font-pixel text-[9px] text-accent tracking-wider mb-3">CONCEPT CHECK</h2>
+                  <h2 className="font-pixel text-[11px] text-accent tracking-wider mb-3">CONCEPT CHECK</h2>
                 <p className="text-sm text-gray-200 mb-4">{quickChallenge.prompt}</p>
                 <div className="space-y-2">
                   {quickChallenge.options.map((option) => {

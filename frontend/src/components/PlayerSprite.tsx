@@ -9,6 +9,9 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
   animationType = 'idle',
   hpPercentage = 100,
 }) => {
+  const PLAYER_SHEET_COLUMNS = 8;
+  const PLAYER_SHEET_ROWS = 4;
+
   const getAnimationClass = () => {
     switch (animationType) {
       case 'damage':
@@ -31,54 +34,16 @@ export const PlayerSprite: React.FC<PlayerSpriteProps> = ({
   };
 
   return (
-    <div className="relative w-14 h-7 flex items-center justify-center">
-      {/* Pixel art player texture with GBA retro styling - scaled up 2x to show 8px-wide frames properly */}
+    <div className="relative w-[28px] h-[28px] flex items-center justify-center">
+      {/* Player sheet uses 8x4 frames; render a single frame centered in the tile. */}
       <div
-        className={`absolute inset-0 sprite ${getAnimationClass()}`}
+        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[14px] h-[28px] sprite ${getAnimationClass()} ${getHealthTint()}`}
         style={{
           backgroundImage: 'url(/game-assets/player-caveman.png)',
-          backgroundSize: '800% 400%',
+          backgroundSize: `${PLAYER_SHEET_COLUMNS * 100}% ${PLAYER_SHEET_ROWS * 100}%`,
           backgroundPosition: '0% 0%',
           backgroundRepeat: 'no-repeat',
-          imageRendering: 'pixelated' as any,
-        }}
-      />
-
-      {/* Overlay texture effect for pixel grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `repeating-linear-gradient(
-            0deg,
-            rgba(0, 0, 0, 0.1) 0px,
-            rgba(0, 0, 0, 0.1) 1px,
-            transparent 1px,
-            transparent 2px
-          ),
-          repeating-linear-gradient(
-            90deg,
-            rgba(0, 0, 0, 0.1) 0px,
-            rgba(0, 0, 0, 0.1) 1px,
-            transparent 1px,
-            transparent 2px
-          )`,
-        }}
-      />
-
-      {/* Health indicator glow */}
-      <img
-        src="/game-assets/player-caveman.png"
-        alt="Player"
-        className={`absolute inset-0 m-auto w-14 h-7 object-contain ${getAnimationClass()} ${getHealthTint()}`}
-      />
-
-      {/* Retro border effect */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: `inset -1px -1px 0 rgba(0, 0, 0, 0.4),
-                      inset 1px 1px 0 rgba(255, 255, 255, 0.1)`,
+          imageRendering: 'pixelated',
         }}
       />
     </div>

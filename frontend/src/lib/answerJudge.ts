@@ -222,5 +222,11 @@ export const judgeConceptAnswer = (question: string, answer: string): JudgeResul
     return { isCorrect: matched, hint: expectedHint(question) };
   }
 
-  return { isCorrect: trimmedAnswer.length >= 3, hint: expectedHint(question) };
+  // Default: If answer is substantial enough (3+ chars) and seems like an attempt, be lenient
+  // But still try basic matching first
+  const hasMinimumLength = trimmedAnswer.length >= 2;
+  const hasAlphanumerics = /[a-z0-9]/i.test(trimmedAnswer);
+  const isSubstantialAttempt = hasMinimumLength && hasAlphanumerics;
+  
+  return { isCorrect: isSubstantialAttempt, hint: expectedHint(question) };
 };

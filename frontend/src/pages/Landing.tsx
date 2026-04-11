@@ -28,7 +28,7 @@ export const Landing = () => {
       <section className="relative z-10 w-full max-w-4xl mx-auto">
         <GBAWindow title="WASM RPG NEO-FUTURE" width="w-full" className="mb-8 animate-bounce-in">
           <div className="text-center space-y-4">
-            <div className="font-pixel text-[10px] text-primary/80 tracking-widest uppercase">
+            <div className="font-pixel text-[13px] text-primary/80 tracking-widest uppercase">
               📡 AI-Native Learning Engine
             </div>
             <h1 className="gba-title text-2xl md:text-3xl">
@@ -80,7 +80,7 @@ export const Landing = () => {
                     {region.emoji}
                   </span>
                   <span
-                    className={`font-pixel text-[7px] tracking-widest px-2 py-1 border border-current ${
+                    className={`font-pixel text-[9px] tracking-widest px-2 py-1 border border-current ${
                       region.open
                         ? `${color.text} bg-${region.color}/10`
                         : 'text-danger border-danger/50'
@@ -91,14 +91,14 @@ export const Landing = () => {
                 </div>
 
                 {/* Card Content */}
-                <h2 className="font-pixel text-[9px] tracking-wider leading-relaxed mb-2 text-window-text uppercase">
+                <h2 className="font-pixel text-[11px] tracking-wider leading-relaxed mb-2 text-window-text uppercase">
                   {region.title}
                 </h2>
                 <p className="text-xs text-gray-400 leading-relaxed mb-4">{region.topic}</p>
 
                 {/* Stats */}
                 {region.open && (
-                  <div className="space-y-1 text-[8px] text-gray-500 mb-3">
+                  <div className="space-y-1 text-[10px] text-gray-500 mb-3">
                     <div className="flex justify-between">
                       <span>Difficulty:</span>
                       <span className="text-accent">▂▄▆</span>
@@ -112,7 +112,7 @@ export const Landing = () => {
 
                 {/* Enter Button for open regions */}
                 {region.open && (
-                  <div className="gba-btn text-[7px] w-full text-center py-2 font-pixel tracking-wider">
+                  <div className="gba-btn text-[9px] w-full text-center py-2 font-pixel tracking-wider">
                     ENTER ▶
                   </div>
                 )}
@@ -126,7 +126,7 @@ export const Landing = () => {
       <section className="relative z-10 mt-12 text-center w-full max-w-2xl">
         <GBAWindow title="GAME INFO" width="w-full">
           <div className="space-y-3 text-sm">
-            <p className="font-pixel text-[8px] text-primary tracking-wider">
+            <p className="font-pixel text-[10px] text-primary tracking-wider">
               QUIZ ➜ DUNGEON ➜ MASTERY
             </p>
             <p className="text-xs text-gray-400">

@@ -120,7 +120,7 @@ const Quiz = ({ onSubmit }: QuizProps) => {
       <div className="min-h-screen flex items-center justify-center px-4">
         <GBAWindow title="ERROR" width="w-96">
           <div className="text-center space-y-4">
-            <p className="text-danger font-pixel text-[9px]">QUIZ UNAVAILABLE</p>
+            <p className="text-danger font-pixel text-[11px]">QUIZ UNAVAILABLE</p>
             <p className="text-sm text-gray-300">{error}</p>
             <GBAButton onClick={() => window.location.reload()} variant="red">
               Retry
@@ -141,7 +141,7 @@ const Quiz = ({ onSubmit }: QuizProps) => {
               Answer 6 randomized questions to generate your adaptive dungeon.
             </p>
             <div>
-              <label className="font-pixel text-[8px] text-gray-400 uppercase tracking-wider block mb-2">
+              <label className="font-pixel text-[10px] text-gray-400 uppercase tracking-wider block mb-2">
                 Student ID
               </label>
               <input
@@ -157,7 +157,7 @@ const Quiz = ({ onSubmit }: QuizProps) => {
 
         {error && (
           <div className="gba-dialog border-danger/50 bg-red-950/20">
-            <div className="text-danger font-pixel text-[9px] mb-2">ERROR</div>
+            <div className="text-danger font-pixel text-[11px] mb-2">ERROR</div>
             <p className="text-sm">{error}</p>
           </div>
         )}
@@ -196,7 +196,7 @@ const Quiz = ({ onSubmit }: QuizProps) => {
                           className="mt-1 cursor-pointer"
                         />
                         <div className="flex-1">
-                          <span className="font-pixel text-[7px] text-accent uppercase tracking-widest">
+                          <span className="font-pixel text-[9px] text-accent uppercase tracking-widest">
                             Option {opt.id}
                             {selected && ' ✓'}
                           </span>

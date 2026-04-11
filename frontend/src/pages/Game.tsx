@@ -19,26 +19,85 @@ type JudgeResult = {
   hint: string;
 };
 
-// AI-powered answer grading via backend
+// AI-powered answer grading via backend with retry logic for rate limiting
 const gradeAnswerWithAI = async (question: string, answer: string): Promise<JudgeResult> => {
-  try {
-    const response = await api.post('/api/grade/answer', {
-      question,
-      student_answer: answer,
-    });
-    
-    const { is_correct, reasoning } = response.data;
-    const hint = reasoning || (is_correct ? 'Correct!' : 'Try again with the core concepts from your lesson.');
-    
-    return {
-      isCorrect: is_correct,
-      hint,
-    };
-  } catch (error) {
-    // Fallback to heuristic grading if API fails
-    console.warn('[Grading] API error, falling back to heuristics:', error);
-    return fallbackJudge(question, answer);
+  const maxRetries = 3;
+  const baseWaitMs = 1000; // 1 second base wait
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await api.post('/api/grade/answer', {
+        question,
+        student_answer: answer,
+      });
+      
+      // Handle both 'is_correct' and 'correct' field names for compatibility
+      const responseData = response.data || {};
+      let is_correct = responseData.is_correct !== undefined ? responseData.is_correct : responseData.correct;
+      const reasoning = responseData.reasoning || responseData.hint;
+      
+      if (is_correct === undefined || is_correct === null) {
+        console.warn('[Grading] Invalid API response - no is_correct field:', responseData);
+        return fallbackJudge(question, answer);
+      }
+      
+      // Properly handle boolean conversion - be defensive about string values
+      if (typeof is_correct === 'string') {
+        is_correct = is_correct.toLowerCase() === 'true' || is_correct === '1';
+      } else {
+        is_correct = Boolean(is_correct);
+      }
+      
+      // Ensure is_correct is a boolean before returning
+      if (typeof is_correct !== 'boolean') {
+        console.warn('[Grading] is_correct field is not a boolean after conversion:', { is_correct, type: typeof is_correct });
+        return fallbackJudge(question, answer);
+      }
+      
+      const hint = reasoning || (is_correct ? 'Excellent!' : 'Try again—review the core concept.');
+      
+      console.log('[Grading] API success:', { question: question.slice(0, 50), is_correct, hint });
+      return {
+        isCorrect: is_correct,
+        hint,
+      };
+    } catch (error: any) {
+      // Check for rate limiting (429) error
+      const status = error?.response?.status;
+      const retryAfterHeader = error?.response?.headers?.['retry-after'];
+      
+      if (status === 429 && attempt < maxRetries - 1) {
+        // Rate limited - wait with exponential backoff, honoring Retry-After when valid
+        const fallbackWaitMs = baseWaitMs * Math.pow(2, attempt);
+        const parsedRetryAfter = Number.parseInt(String(retryAfterHeader ?? ''), 10);
+        const waitMs = Number.isFinite(parsedRetryAfter) && parsedRetryAfter > 0
+          ? parsedRetryAfter * 1000
+          : fallbackWaitMs;
+        console.log(`[Grading] Rate limited (429). Retry ${attempt + 1}/${maxRetries} after ${waitMs}ms`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+        continue; // Retry
+      }
+      
+      // Other errors - use fallback
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.warn('[Grading] API error:', errorMsg, 'Status:', status);
+      
+      if (status === 429) {
+        // Even after retries, rate limited - return lenient response to avoid damage
+        console.warn('[Grading] Rate limit persists after retries - accepting answer to avoid penalty');
+        return {
+          isCorrect: true,
+          hint: '⚠️ Server busy - your answer was accepted. Try again whenever ready.',
+        };
+      }
+      
+      // Use fallback for other errors
+      return fallbackJudge(question, answer);
+    }
   }
+  
+  // Should not reach here, but fallback just in case
+  return fallbackJudge(question, answer);
 };
 
 const TILE_SIZE = 28;
@@ -78,6 +137,7 @@ const Game = ({ level, studentId }: GameProps) => {
   const [showCorrectFeedback, setShowCorrectFeedback] = useState(false);
   const [isGradingAnswer, setIsGradingAnswer] = useState(false);
   const [combatLog, setCombatLog] = useState<string[]>([]);
+  const [boardScale, setBoardScale] = useState(1);
 
   const queueUiTimeout = useCallback((callback: () => void, delayMs: number) => {
     const timeoutId = window.setTimeout(() => {
@@ -529,44 +589,82 @@ const Game = ({ level, studentId }: GameProps) => {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [movePlayer]);
 
+  const boardBaseWidth = level.width * TILE_SIZE;
+  const boardBaseHeight = level.height * TILE_SIZE;
+
+  useEffect(() => {
+    const updateBoardScale = () => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const desktop = viewportWidth >= 1024;
+
+      const horizontalPadding = desktop ? 180 : 40;
+      const sidebarReserve = desktop ? Math.min(460, viewportWidth * 0.34) : 0;
+      const verticalPadding = desktop ? 230 : 280;
+
+      const availableWidth = Math.max(220, viewportWidth - horizontalPadding - sidebarReserve);
+      const availableHeight = Math.max(220, viewportHeight - verticalPadding);
+
+      const rawScale = Math.min(
+        availableWidth / boardBaseWidth,
+        availableHeight / boardBaseHeight,
+      );
+
+      const clampedScale = Math.min(2.35, Math.max(0.6, rawScale));
+      setBoardScale(clampedScale);
+    };
+
+    updateBoardScale();
+    window.addEventListener('resize', updateBoardScale);
+    return () => window.removeEventListener('resize', updateBoardScale);
+  }, [boardBaseHeight, boardBaseWidth]);
+
   const totalEnemies = level.enemies?.length ?? 0;
   const defeatedEnemies = Object.keys(encounteredEnemies).length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020205] flex flex-col items-center justify-center overflow-auto p-4 md:p-8">
+    <div className="fixed inset-0 z-50 bg-[#020205] flex flex-col items-center justify-start overflow-auto p-3 md:p-6">
       <button
         onClick={() => navigate('/')}
-        className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-20 pixel-btn-ghost text-[7px] py-1.5 px-3 opacity-70 hover:opacity-100"
+        className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-20 pixel-btn-ghost text-[9px] py-1.5 px-3 opacity-70 hover:opacity-100"
       >
         Exit To Map
       </button>
 
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 md:gap-6 mt-12">
-        <section className="game-panel pixel-border rounded-lg p-3 md:p-4">
+      <div className="w-[min(98vw,1800px)] grid grid-cols-1 lg:grid-cols-[max-content_clamp(320px,30vw,440px)] gap-4 md:gap-6 mt-12 lg:mt-16 lg:justify-center lg:items-start">
+        <section className="game-panel pixel-border rounded-lg p-3 md:p-4 w-full lg:w-fit">
           <div className="flex items-center justify-between mb-3">
-            <h1 className="font-pixel text-[10px] md:text-[11px] text-secondary tracking-wider">
+            <h1 className="font-pixel text-[13px] md:text-[14px] text-secondary tracking-wider">
               {level.level_name}
             </h1>
-            <span className="font-pixel text-[8px] text-gray-400 tracking-widest">
+            <span className="font-pixel text-[10px] text-gray-400 tracking-widest">
               {level.width}x{level.height}
             </span>
           </div>
 
-          <div
-            className="relative border-2 border-primary/40 rounded overflow-hidden"
-            style={{
-              width: `${level.width * TILE_SIZE}px`,
-              maxWidth: '100%',
-              margin: '0 auto',
-            }}
-          >
+          <div className="relative mx-auto">
             <div
-              className="grid"
+              className="relative border-2 border-primary/40 rounded overflow-hidden"
               style={{
-                gridTemplateColumns: `repeat(${level.width}, ${TILE_SIZE}px)`,
-                width: `${level.width * TILE_SIZE}px`,
+                width: `${boardBaseWidth * boardScale}px`,
+                height: `${boardBaseHeight * boardScale}px`,
               }}
             >
+              <div
+                className="origin-top-left"
+                style={{
+                  transform: `scale(${boardScale})`,
+                  width: `${boardBaseWidth}px`,
+                  height: `${boardBaseHeight}px`,
+                }}
+              >
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: `repeat(${level.width}, ${TILE_SIZE}px)`,
+                    width: `${boardBaseWidth}px`,
+                  }}
+                >
               {Array.from({ length: level.height }).map((_, y) => (
                 Array.from({ length: level.width }).map((__, x) => {
                   const tile = level.tiles?.[y]?.[x] ?? 1;
@@ -619,14 +717,16 @@ const Game = ({ level, studentId }: GameProps) => {
                   );
                 })
               ))}
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
-            <button className="pixel-btn-ghost text-[8px] py-2 px-4" onClick={() => movePlayer(0, -1)}>Up</button>
-            <button className="pixel-btn-ghost text-[8px] py-2 px-4" onClick={() => movePlayer(-1, 0)}>Left</button>
-            <button className="pixel-btn-ghost text-[8px] py-2 px-4" onClick={() => movePlayer(1, 0)}>Right</button>
-            <button className="pixel-btn-ghost text-[8px] py-2 px-4" onClick={() => movePlayer(0, 1)}>Down</button>
+            <button className="pixel-btn-ghost text-[10px] py-2 px-4" onClick={() => movePlayer(0, -1)}>Up</button>
+            <button className="pixel-btn-ghost text-[10px] py-2 px-4" onClick={() => movePlayer(-1, 0)}>Left</button>
+            <button className="pixel-btn-ghost text-[10px] py-2 px-4" onClick={() => movePlayer(1, 0)}>Right</button>
+            <button className="pixel-btn-ghost text-[10px] py-2 px-4" onClick={() => movePlayer(0, 1)}>Down</button>
           </div>
         </section>
 
@@ -649,30 +749,40 @@ const Game = ({ level, studentId }: GameProps) => {
           />
 
           {inEnemyCombat && activeEnemy && (
-            <div className="game-panel rounded p-3 border border-white/[0.05]">
-              <div className="flex items-start gap-2">
-                <img src="/game-assets/enemy-reptile.png" alt="Enemy portrait" className={`w-8 h-8 object-contain mt-0.5 ${isDamageAnimating ? 'animate-bounce' : 'animate-idle-bob'}`} />
+            <div className="game-panel rounded p-4 border-2 border-accent/60 bg-gradient-to-b from-[#1a2847] to-[#0f1628]">
+              <div className="flex items-start gap-3">
+                <div
+                  aria-label="Enemy portrait"
+                  className={`w-10 h-10 mt-0.5 flex-shrink-0 sprite ${isDamageAnimating ? 'animate-bounce' : 'animate-idle-bob'}`}
+                  style={{
+                    backgroundImage: 'url(/game-assets/enemy-reptile.png)',
+                    backgroundSize: '400% 400%',
+                    backgroundPosition: '0% 0%',
+                    backgroundRepeat: 'no-repeat',
+                    imageRendering: 'pixelated',
+                  }}
+                />
                 <div className="w-full">
-                  <div className="font-pixel text-[7px] text-accent tracking-widest mb-1">
-                    ENEMY CHALLENGE
+                  <div className="font-pixel text-[10px] text-accent tracking-widest mb-2 uppercase">
+                    ⚔️ ENEMY CHALLENGE
                   </div>
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-sm text-gray-200 leading-relaxed mb-3 font-medium">
                     {activeEnemy.concept_question?.trim() || `Defeat the ${activeEnemy.type} with a concept answer.`}
                   </p>
                   <textarea
                     value={enemyAnswer}
                     onChange={(event) => setEnemyAnswer(event.target.value)}
-                    rows={2}
-                    placeholder="Type your answer to defeat this enemy..."
+                    rows={3}
+                    placeholder=" Type your answer here  →"
                     disabled={isGradingAnswer || playerHp <= 0}
-                    className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
+                    className="mt-2 w-full bg-[#0a0f1f] border-2 border-accent/40 rounded px-3 py-2 text-sm text-white outline-none focus:border-accent focus:border-2 focus:shadow-[0_0_8px_rgba(6,182,212,0.4)] resize-none transition-all placeholder:text-gray-500"
                   />
                   <button
-                    className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
+                    className="pixel-btn-ghost text-[10px] py-2 px-4 mt-3 border-accent/60 hover:border-accent hover:text-accent transition-all"
                     onClick={submitEnemyAnswer}
                     disabled={isGradingAnswer || playerHp <= 0}
                   >
-                    {isGradingAnswer ? 'Grading...' : 'Submit Enemy Answer'}
+                    {isGradingAnswer ? '⏳ GRADING...' : '↳ SUBMIT ANSWER'}
                   </button>
                 </div>
               </div>
@@ -680,28 +790,38 @@ const Game = ({ level, studentId }: GameProps) => {
           )}
 
           {bossPrompt && (
-            <div className="game-panel rounded p-3 border border-white/[0.05]">
-              <div className="flex items-start gap-2">
-                <img src="/game-assets/boss-slime-idle.png" alt="Boss portrait" className="w-8 h-8 object-contain mt-0.5 animate-idle-bob" />
-                <div>
-                  <div className="font-pixel text-[7px] text-danger tracking-widest mb-1">
-                    BOSS QUESTION {bossQuestionIndex + 1}/{bossQuestions.length}
+            <div className="game-panel rounded p-4 border-2 border-danger/60 bg-gradient-to-b from-[#2a1a1a] to-[#1a0f0f]">
+              <div className="flex items-start gap-3">
+                <div
+                  aria-label="Boss portrait"
+                  className="w-10 h-10 mt-0.5 flex-shrink-0 sprite animate-idle-bob"
+                  style={{
+                    backgroundImage: 'url(/game-assets/boss-slime-idle.png)',
+                    backgroundSize: '500% 100%',
+                    backgroundPosition: '50% 0%',
+                    backgroundRepeat: 'no-repeat',
+                    imageRendering: 'pixelated',
+                  }}
+                />
+                <div className="w-full">
+                  <div className="font-pixel text-[10px] text-danger tracking-widest mb-2 uppercase">
+                    👑 BOSS {bossQuestionIndex + 1}/{bossQuestions.length}
                   </div>
-                  <p className="text-xs text-gray-300 leading-relaxed">{bossPrompt}</p>
+                  <p className="text-sm text-gray-100 leading-relaxed mb-3 font-medium">{bossPrompt}</p>
                   <textarea
                     value={bossAnswer}
                     onChange={(event) => setBossAnswer(event.target.value)}
-                    rows={2}
-                    placeholder="Type your answer to advance..."
+                    rows={3}
+                    placeholder=" Type your answer  →"
                     disabled={isGradingAnswer || playerHp <= 0}
-                    className="mt-2 w-full bg-[#0b1224] border border-white/[0.12] rounded px-2 py-2 text-xs text-white outline-none focus:border-secondary resize-none"
+                    className="mt-2 w-full bg-[#0a0f1f] border-2 border-danger/40 rounded px-3 py-2 text-sm text-white outline-none focus:border-danger focus:border-2 focus:shadow-[0_0_8px_rgba(239,68,68,0.4)] resize-none transition-all placeholder:text-gray-500"
                   />
                   <button
-                    className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-2"
+                    className="pixel-btn-ghost text-[10px] py-2 px-4 mt-3 border-danger/60 hover:border-danger hover:text-danger transition-all"
                     onClick={submitBossAnswer}
                     disabled={isGradingAnswer || playerHp <= 0}
                   >
-                    {isGradingAnswer ? 'Grading...' : 'Submit Boss Answer'}
+                    {isGradingAnswer ? '⏳ GRADING...' : '↳ SUBMIT ANSWER'}
                   </button>
                 </div>
               </div>
@@ -709,26 +829,26 @@ const Game = ({ level, studentId }: GameProps) => {
           )}
 
           {levelWon && hasBossQuestions && !bossDefeated && (
-            <div className="rounded p-3 border border-danger/40 bg-danger/10">
-              <div className="font-pixel text-[8px] text-danger tracking-widest">BOSS ACTIVE</div>
-              <p className="text-xs text-gray-200 mt-1">Answer each boss question to finish the run.</p>
+            <div className="rounded p-4 border-2 border-danger/60 bg-gradient-to-b from-danger/20 to-transparent">
+              <div className="font-pixel text-[11px] text-danger tracking-widest uppercase mb-1">⚡ BOSS INCOMING</div>
+              <p className="text-sm text-gray-100">Answer all boss questions to complete the challenge.</p>
             </div>
           )}
 
           {levelWon && (!hasBossQuestions || bossDefeated) && (
-            <div className="rounded p-3 border border-success/40 bg-success/10">
-              <div className="font-pixel text-[8px] text-success tracking-widest">RUN COMPLETE</div>
-              <p className="text-xs text-gray-200 mt-1">
-                {savingProgress ? 'Saving your run...' : progressSaved ? 'Saved. Check your Adventure Log.' : 'Completed.'}
+            <div className="rounded p-4 border-2 border-success/60 bg-gradient-to-b from-success/20 to-transparent animate-pulse">
+              <div className="font-pixel text-[11px] text-success tracking-widest uppercase mb-1">✨ LEVEL COMPLETE</div>
+              <p className="text-sm text-gray-100 mb-3">
+                {savingProgress ? '💾 Saving progress...' : progressSaved ? '✓ Progress saved!' : 'Challenge conquered!'}
               </p>
-              <button className="pixel-btn-ghost text-[7px] py-1.5 px-3 mt-3" onClick={() => navigate('/progress')}>
-                Open Adventure Log
+              <button className="pixel-btn-ghost text-[10px] py-2 px-4 border-success/60 hover:border-success hover:text-success transition-all" onClick={() => navigate('/progress')}>
+                🔖 ADVENTURE LOG
               </button>
             </div>
           )}
 
-          <div className="text-[11px] text-gray-500 leading-relaxed">
-            Use WASD or Arrow Keys for movement. Walls block movement. Enemy and boss prompts must be answered correctly to win.
+          <div className="text-[13px] text-gray-400 leading-relaxed border-t border-white/[0.1] pt-3 mt-3">
+            ⌨️ <span className="text-accent">WASD</span> or <span className="text-accent">Arrow Keys</span> to move • Answer questions to defeat enemies
           </div>
         </aside>
       </div>

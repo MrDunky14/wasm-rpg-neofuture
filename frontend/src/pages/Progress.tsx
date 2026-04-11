@@ -72,7 +72,7 @@ const Progress = () => {
 
             <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
               <div className="flex-1">
-                <label className="font-pixel text-[8px] text-gray-400 uppercase tracking-wider block mb-2">
+                <label className="font-pixel text-[10px] text-gray-400 uppercase tracking-wider block mb-2">
                   Search Player
                 </label>
                 <input
@@ -122,7 +122,7 @@ const Progress = () => {
               {/* Summary Header */}
               <div className="mb-4 p-3 bg-window-border/20 border border-window-border/40 rounded">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-pixel text-[8px] text-gray-400">COMPLETION</span>
+                  <span className="font-pixel text-[10px] text-gray-400">COMPLETION</span>
                   <span className="text-sm font-pixel text-primary">{completionPercentage}%</span>
                 </div>
                 <div className="gba-stat-bar">
@@ -150,7 +150,7 @@ const Progress = () => {
                           Run #{progress.records.length - idx}: {p.level_name}
                         </h3>
                       </div>
-                      <span className={`font-pixel text-[7px] px-2 py-1 border ${
+                      <span className={`font-pixel text-[9px] px-2 py-1 border ${
                         p.completed
                           ? 'text-success border-success bg-success/20'
                           : 'text-warning border-warning bg-warning/20'
@@ -186,13 +186,13 @@ const Progress = () => {
           <GBAWindow title="STATS SUMMARY" width="w-full">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-400 font-pixel text-[8px]">AVG SCORE</span>
+                <span className="text-gray-400 font-pixel text-[10px]">AVG SCORE</span>
                 <div className="text-lg font-pixel text-accent mt-1">
                   {Math.round(totalScore / progress.records.length)}
                 </div>
               </div>
               <div>
-                <span className="text-gray-400 font-pixel text-[8px]">TOTAL TIME</span>
+                <span className="text-gray-400 font-pixel text-[10px]">TOTAL TIME</span>
                 <div className="text-lg font-pixel text-secondary mt-1">
                   {Math.floor(progress.records.reduce((sum, r) => sum + r.time_seconds, 0) / 60)}m
                 </div>

@@ -83,7 +83,7 @@ function GameRouteHandler(props: GameRouteProps) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="game-panel rounded-xl p-6 text-center border border-white/[0.08]">
-          <h2 className="font-pixel text-[11px] tracking-wider text-secondary mb-4">LOADING DUNGEON</h2>
+          <h2 className="font-pixel text-[14px] tracking-wider text-secondary mb-4">LOADING DUNGEON</h2>
           <p className="text-sm text-gray-300">Preparing your adventure...</p>
         </div>
       </div>
@@ -94,7 +94,7 @@ function GameRouteHandler(props: GameRouteProps) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="game-panel rounded-xl p-6 text-center border border-danger/20">
-          <h2 className="font-pixel text-[11px] tracking-wider text-danger mb-4">LOAD FAILED</h2>
+          <h2 className="font-pixel text-[14px] tracking-wider text-danger mb-4">LOAD FAILED</h2>
           <p className="text-sm text-gray-300 mb-4">{loadError}</p>
           <div className="flex gap-3 justify-center">
             <button className="pixel-btn" onClick={() => navigate('/map')}>Back To Map</button>
@@ -109,7 +109,7 @@ function GameRouteHandler(props: GameRouteProps) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="game-panel rounded-xl p-6 text-center border border-white/[0.08]">
-          <h2 className="font-pixel text-[11px] tracking-wider text-secondary mb-4">NO LEVEL LOADED</h2>
+          <h2 className="font-pixel text-[14px] tracking-wider text-secondary mb-4">NO LEVEL LOADED</h2>
           <p className="text-sm text-gray-300 mb-6">Complete quiz, lesson, and challenge before entering dungeon.</p>
           <button className="pixel-btn" onClick={() => navigate('/quiz')}>Go To Quiz</button>
         </div>
@@ -173,7 +173,7 @@ function App() {
           ) : (
             <div className="min-h-screen flex items-center justify-center px-4">
               <div className="game-panel rounded-xl p-6 text-center border border-white/[0.08]">
-                <h2 className="font-pixel text-[11px] tracking-wider text-secondary mb-4">NO LESSON CONTEXT</h2>
+                <h2 className="font-pixel text-[14px] tracking-wider text-secondary mb-4">NO LESSON CONTEXT</h2>
                 <p className="text-sm text-gray-300 mb-6">Generate a dungeon from quiz results first.</p>
                 <button className="pixel-btn" onClick={() => navigate('/results')}>Back To Results</button>
               </div>
@@ -194,7 +194,7 @@ function App() {
           ) : (
             <div className="min-h-screen flex items-center justify-center px-4">
               <div className="game-panel rounded-xl p-6 text-center border border-white/[0.08]">
-                <h2 className="font-pixel text-[11px] tracking-wider text-secondary mb-4">NO CHALLENGE CONTEXT</h2>
+                <h2 className="font-pixel text-[14px] tracking-wider text-secondary mb-4">NO CHALLENGE CONTEXT</h2>
                 <p className="text-sm text-gray-300 mb-6">Start from quiz results to unlock your challenge room.</p>
                 <button className="pixel-btn" onClick={() => navigate('/results')}>Back To Results</button>
               </div>

@@ -474,6 +474,8 @@ async def generate_lesson(topic: str, failed_concepts: list[str] | None = None) 
 async def grade_answer_with_ai(question: str, student_answer: str, correct_answer: str | None = None) -> dict[str, Any]:
     """
     Grade a free-text student answer using AI via OpenRouter.
+    Includes retry logic for rate limiting (429 errors) with exponential backoff.
+    GUARANTEES: is_correct is always returned as a boolean (safe for damage logic).
     
     Args:
         question: The question/prompt the student answered
@@ -482,10 +484,10 @@ async def grade_answer_with_ai(question: str, student_answer: str, correct_answe
     
     Returns:
         {
-            "is_correct": bool,
+            "is_correct": bool (guaranteed - never confused with errors),
             "confidence": float (0.0-1.0),
             "reasoning": str,
-            "source": str ("openrouter", "fallback", etc.)
+            "source": str ("openrouter", "fallback:reason")
         }
     """
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
@@ -548,69 +550,125 @@ async def grade_answer_with_ai(question: str, student_answer: str, correct_answe
             headers=headers,
             method="POST",
         )
-        with urlrequest.urlopen(req, timeout=http_timeout_seconds) as response:
-            raw = response.read().decode("utf-8")
-        return json.loads(raw)
+        try:
+            with urlrequest.urlopen(req, timeout=http_timeout_seconds) as response:
+                raw = response.read().decode("utf-8")
+            return {"status": "success", "data": json.loads(raw)}
+        except Exception as e:
+            # Capture HTTP errors including 429
+            return {"status": "error", "error": e}
 
-    try:
-        response_payload = await asyncio.wait_for(
-            asyncio.to_thread(_send_grading_request, model),
-            timeout=provider_timeout_seconds,
-        )
-        
-        choices = response_payload.get("choices", [])
-        if not choices:
+    def _normalize_is_correct(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "y"}:
+                return True
+            if normalized in {"false", "0", "no", "n", ""}:
+                return False
+        return False
+
+    # Retry logic with exponential backoff for rate limiting (429 errors)
+    max_retries = 3
+    base_wait_seconds = 1
+    
+    for attempt in range(max_retries):
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(_send_grading_request, model),
+                timeout=provider_timeout_seconds,
+            )
+            
+            if result["status"] == "error":
+                error = result["error"]
+                # Check for 429 (Too Many Requests) from urllib
+                if hasattr(error, 'code') and error.code == 429:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff: wait 1s, 2s, 4s before retry
+                        wait_seconds = base_wait_seconds * (2 ** attempt)
+                        await asyncio.sleep(wait_seconds)
+                        continue
+                    else:
+                        # Final retry failed, return lenient fallback to avoid damage
+                        return {
+                            "is_correct": True,
+                            "confidence": 0.3,
+                            "reasoning": "AI rate-limited; answer accepted to avoid timeout penalties",
+                            "source": "fallback:rate_limit",
+                        }
+                else:
+                    # Other errors - propagate
+                    raise error
+            
+            # Success - process response
+            response_payload = result["data"]
+            choices = response_payload.get("choices", [])
+            if not choices:
+                return {
+                    "is_correct": False,
+                    "confidence": 0.0,
+                    "reasoning": "No response from AI",
+                    "source": "fallback:no_response",
+                }
+
+            first_choice = choices[0] if isinstance(choices[0], dict) else {}
+            message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
+            content = message.get("content", "") if isinstance(message, dict) else ""
+            
+            if not isinstance(content, str):
+                content = ""
+            
+            raw_text = _extract_openrouter_text(content)
+            
+            json_payload = _extract_json_object(raw_text)
+            if not json_payload:
+                return {
+                    "is_correct": False,
+                    "confidence": 0.0,
+                    "reasoning": "Invalid AI response format",
+                    "source": "fallback:parse_error",
+                }
+
+            parsed = json.loads(json_payload)
+            
+            # Validate and normalize response - GUARANTEE: is_correct is always bool
+            is_correct = _normalize_is_correct(parsed.get("is_correct", False))
+            try:
+                confidence = float(parsed.get("confidence", 0.5))
+            except (TypeError, ValueError):
+                confidence = 0.5
+            confidence = max(0.0, min(1.0, confidence))  # Clamp to [0, 1]
+            reasoning = str(parsed.get("reasoning", "")).strip()[:200]
+            
+            return {
+                "is_correct": is_correct,
+                "confidence": confidence,
+                "reasoning": reasoning,
+                "source": f"openrouter:{model}",
+            }
+            
+        except asyncio.TimeoutError:
+            if attempt < max_retries - 1:
+                wait_seconds = base_wait_seconds * (2 ** attempt)
+                await asyncio.sleep(wait_seconds)
+                continue
             return {
                 "is_correct": False,
                 "confidence": 0.0,
-                "reasoning": "No response from AI",
-                "source": "fallback:no_response",
+                "reasoning": "AI grading timeout; consider answer incorrect",
+                "source": "fallback:timeout",
             }
-
-        first_choice = choices[0] if isinstance(choices[0], dict) else {}
-        message = first_choice.get("message", {}) if isinstance(first_choice, dict) else {}
-        content = message.get("content", "") if isinstance(message, dict) else ""
-        
-        if not isinstance(content, str):
-            content = ""
-        
-        raw_text = _extract_openrouter_text(content)
-        
-        json_payload = _extract_json_object(raw_text)
-        if not json_payload:
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_seconds = base_wait_seconds * (2 ** attempt)
+                await asyncio.sleep(wait_seconds)
+                continue
             return {
                 "is_correct": False,
                 "confidence": 0.0,
-                "reasoning": "Invalid AI response format",
-                "source": "fallback:parse_error",
+                "reasoning": f"AI grading error: {str(e)[:50]}",
+                "source": "fallback:error",
             }
-
-        parsed = json.loads(json_payload)
-        
-        # Validate and normalize response
-        is_correct = bool(parsed.get("is_correct", False))
-        confidence = float(parsed.get("confidence", 0.5))
-        confidence = max(0.0, min(1.0, confidence))  # Clamp to [0, 1]
-        reasoning = str(parsed.get("reasoning", "")).strip()[:200]
-        
-        return {
-            "is_correct": is_correct,
-            "confidence": confidence,
-            "reasoning": reasoning,
-            "source": f"openrouter:{model}",
-        }
-        
-    except asyncio.TimeoutError:
-        return {
-            "is_correct": False,
-            "confidence": 0.0,
-            "reasoning": "AI grading timeout; consider answer incorrect",
-            "source": "fallback:timeout",
-        }
-    except Exception as e:
-        return {
-            "is_correct": False,
-            "confidence": 0.0,
-            "reasoning": f"AI grading error: {str(e)[:50]}",
-            "source": "fallback:error",
-        }

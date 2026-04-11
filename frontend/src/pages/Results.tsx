@@ -70,7 +70,7 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="game-panel rounded-xl p-6 border border-white/[0.08] text-center">
-          <h2 className="font-pixel text-[10px] text-secondary tracking-wider mb-3">NO QUIZ RESULT FOUND</h2>
+          <h2 className="font-pixel text-[13px] text-secondary tracking-wider mb-3">NO QUIZ RESULT FOUND</h2>
           <p className="text-sm text-gray-300">Please complete the diagnostic quiz first.</p>
         </div>
       </div>
@@ -85,7 +85,7 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
       <div className="w-full max-w-3xl z-10">
         <div className="game-panel rounded-xl p-6 md:p-8 border border-white/[0.08]">
           <div className="text-center mb-6">
-            <span className="font-pixel text-[8px] tracking-[0.3em] text-secondary">DIAGNOSTIC COMPLETE</span>
+            <span className="font-pixel text-[10px] tracking-[0.3em] text-secondary">DIAGNOSTIC COMPLETE</span>
             <h1 className="mt-3 font-pixel text-[14px] md:text-[16px] text-white tracking-wider">QUIZ RESULTS</h1>
           </div>
 
@@ -101,7 +101,7 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
           </div>
 
           <div className="mb-5">
-            <h3 className="font-pixel text-[8px] text-gray-500 tracking-widest mb-3">TOPIC BREAKDOWN</h3>
+            <h3 className="font-pixel text-[10px] text-gray-500 tracking-widest mb-3">TOPIC BREAKDOWN</h3>
             <div className="space-y-2">
               {result.topic_scores.map((ts) => (
                 <div
@@ -112,7 +112,7 @@ const Results = ({ quizResult, onEnterDungeon }: ResultsProps) => {
                   ].join(' ')}
                 >
                   <span className="font-medium text-white capitalize">{ts.topic.replace(/_/g, ' ')}</span>
-                  <span className={['font-pixel text-[8px] tracking-wider', ts.passed ? 'text-success' : 'text-danger'].join(' ')}>
+                  <span className={['font-pixel text-[10px] tracking-wider', ts.passed ? 'text-success' : 'text-danger'].join(' ')}>
                     {ts.correct}/{ts.total} {ts.passed ? 'PASS' : 'FAIL'}
                   </span>
                 </div>

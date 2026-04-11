@@ -12,6 +12,10 @@ type EnemyTypeConfig = {
   colorTint: string;
   glowColor: string;
   scale: number;
+  sheetColumns: number;
+  sheetRows: number;
+  frameX: number;
+  frameY: number;
   rarity: 'common' | 'rare' | 'boss';
 };
 
@@ -21,13 +25,21 @@ const ENEMY_TYPES: Record<string, EnemyTypeConfig> = {
     colorTint: 'hue-rotate(120deg)',
     glowColor: 'rgba(16, 185, 129, 0.8)',
     scale: 1,
+    sheetColumns: 4,
+    sheetRows: 4,
+    frameX: 0,
+    frameY: 0,
     rarity: 'common',
   },
   slime: {
     imageUrl: '/game-assets/boss-slime-idle.png',
     colorTint: 'hue-rotate(60deg)',
     glowColor: 'rgba(168, 85, 247, 0.8)',
-    scale: 1.1,
+    scale: 1,
+    sheetColumns: 5,
+    sheetRows: 1,
+    frameX: 2,
+    frameY: 0,
     rarity: 'rare',
   },
   boss: {
@@ -35,6 +47,10 @@ const ENEMY_TYPES: Record<string, EnemyTypeConfig> = {
     colorTint: 'hue-rotate(0deg) saturate(1.5)',
     glowColor: 'rgba(239, 68, 68, 0.8)',
     scale: 1,
+    sheetColumns: 1,
+    sheetRows: 1,
+    frameX: 0,
+    frameY: 0,
     rarity: 'boss',
   },
   goblin: {
@@ -42,6 +58,10 @@ const ENEMY_TYPES: Record<string, EnemyTypeConfig> = {
     colorTint: 'hue-rotate(30deg) brightness(0.9)',
     glowColor: 'rgba(234, 179, 8, 0.8)',
     scale: 1,
+    sheetColumns: 4,
+    sheetRows: 4,
+    frameX: 1,
+    frameY: 0,
     rarity: 'common',
   },
   skeleton: {
@@ -49,6 +69,10 @@ const ENEMY_TYPES: Record<string, EnemyTypeConfig> = {
     colorTint: 'grayscale(1) brightness(1.1)',
     glowColor: 'rgba(107, 114, 128, 0.8)',
     scale: 1,
+    sheetColumns: 4,
+    sheetRows: 4,
+    frameX: 2,
+    frameY: 0,
     rarity: 'rare',
   },
   default: {
@@ -56,6 +80,10 @@ const ENEMY_TYPES: Record<string, EnemyTypeConfig> = {
     colorTint: 'hue-rotate(0deg)',
     glowColor: 'rgba(6, 182, 212, 0.8)',
     scale: 1,
+    sheetColumns: 4,
+    sheetRows: 4,
+    frameX: 0,
+    frameY: 0,
     rarity: 'common',
   },
 };
@@ -101,6 +129,12 @@ export const EnemySprite: React.FC<EnemySpriteProps> = ({
 
   const scaledWidth = `${28 * config.scale}px`;
   const scaledHeight = `${28 * config.scale}px`;
+  const frameXPercent = config.sheetColumns > 1
+    ? `${(config.frameX / (config.sheetColumns - 1)) * 100}%`
+    : '0%';
+  const frameYPercent = config.sheetRows > 1
+    ? `${(config.frameY / (config.sheetRows - 1)) * 100}%`
+    : '0%';
 
   return (
     <div className="relative flex flex-col items-center justify-center">
@@ -125,8 +159,8 @@ export const EnemySprite: React.FC<EnemySpriteProps> = ({
           className="absolute inset-0 w-full h-full"
           style={{
             backgroundImage: `url(${config.imageUrl})`,
-            backgroundSize: '300% 400%',
-            backgroundPosition: '0% 0%',
+            backgroundSize: `${config.sheetColumns * 100}% ${config.sheetRows * 100}%`,
+            backgroundPosition: `${frameXPercent} ${frameYPercent}`,
             backgroundRepeat: 'no-repeat',
             imageRendering: 'pixelated',
             filter: config.colorTint,

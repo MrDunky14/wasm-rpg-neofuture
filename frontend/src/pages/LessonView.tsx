@@ -81,8 +81,8 @@ const LessonView = ({ studentId, topic, failedConcepts, onBack, onContinue }: Le
       <div className="w-full max-w-3xl z-10">
         <div className="game-panel rounded-xl p-6 md:p-8 border border-white/[0.08]">
           <div className="text-center mb-6">
-            <span className="font-pixel text-[8px] tracking-[0.3em] text-secondary uppercase">Lesson Unlock</span>
-            <h1 className="mt-3 font-pixel text-[14px] md:text-[16px] text-white tracking-wider">LEARN BEFORE BATTLE</h1>
+            <span className="font-pixel text-[10px] tracking-[0.3em] text-secondary uppercase">Lesson Unlock</span>
+            <h1 className="mt-3 font-pixel text-[18px] md:text-[20px] text-white tracking-wider">LEARN BEFORE BATTLE</h1>
             <p className="mt-3 text-sm text-gray-300">
               Failed topic: <span className="capitalize text-accent">{topic.replace(/_/g, ' ')}</span>
             </p>
@@ -90,14 +90,14 @@ const LessonView = ({ studentId, topic, failedConcepts, onBack, onContinue }: Le
 
           {loading && (
             <div className="game-panel rounded-lg p-4 border border-white/[0.06]">
-              <p className="font-pixel text-[9px] tracking-wider text-secondary">GENERATING LESSON...</p>
+              <p className="font-pixel text-[11px] tracking-wider text-secondary">GENERATING LESSON...</p>
             </div>
           )}
 
           {!loading && lesson && (
             <div className="space-y-4">
               <div className="lesson-panel rounded-lg p-4 border border-white/[0.06]">
-                <h2 className="font-pixel text-[10px] tracking-wider text-white">{lesson.title}</h2>
+                <h2 className="font-pixel text-[13px] tracking-wider text-white">{lesson.title}</h2>
                 <p className="mt-3 text-sm text-gray-200 leading-relaxed">{lesson.explanation}</p>
                 <p className="mt-3 text-xs text-gray-400">
                   Estimated time: {lesson.estimated_time_min} min • Source: {lesson.source}
@@ -105,18 +105,18 @@ const LessonView = ({ studentId, topic, failedConcepts, onBack, onContinue }: Le
               </div>
 
               <div className="lesson-panel rounded-lg p-4 border border-white/[0.06]">
-                <h3 className="font-pixel text-[8px] tracking-widest text-gray-400 mb-2">PSEUDOCODE</h3>
+                <h3 className="font-pixel text-[10px] tracking-widest text-gray-400 mb-2">PSEUDOCODE</h3>
                 <pre className="pseudocode-block">{lesson.pseudocode}</pre>
               </div>
 
               <div className="lesson-panel rounded-lg p-4 border border-white/[0.06]">
-                <h3 className="font-pixel text-[8px] tracking-widest text-gray-400 mb-2">EXAMPLE</h3>
+                <h3 className="font-pixel text-[10px] tracking-widest text-gray-400 mb-2">EXAMPLE</h3>
                 <p className="text-sm text-gray-200 leading-relaxed">{lesson.example}</p>
               </div>
 
               {lesson.checkpoints.length > 0 && (
                 <div className="lesson-panel rounded-lg p-4 border border-white/[0.06]">
-                  <h3 className="font-pixel text-[8px] tracking-widest text-gray-400 mb-2">LEARNING CHECKPOINTS</h3>
+                  <h3 className="font-pixel text-[10px] tracking-widest text-gray-400 mb-2">LEARNING CHECKPOINTS</h3>
                   <ul className="space-y-2 text-sm text-gray-200">
                     {lesson.checkpoints.map((point, idx) => (
                       <li key={idx} className="lesson-checkpoint">✓ {point}</li>
