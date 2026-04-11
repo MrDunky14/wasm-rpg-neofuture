@@ -348,17 +348,26 @@ const Game = ({ level, studentId }: GameProps) => {
         
         // Boss defeat - wait a bit longer for final victory
         queueUiTimeout(() => {
-          if (playerHp <= 0) {
-            setIsGradingAnswer(false);
-            return;
-          }
+          try {
+            console.log('[Boss Combat] Defeat timeout callback executing...');
+            if (playerHp <= 0) {
+              console.log('[Boss Combat] Player dead, not setting bossDefeated');
+              setIsGradingAnswer(false);
+              return;
+            }
 
-          setBossDefeated(true);
-          setBossPrompt('');
-          setBossAnswer('');
-          setMessage('✓ Boss defeated. Dungeon mastered.');
-          setShowCorrectFeedback(false);
-          setIsGradingAnswer(false);
+            console.log('[Boss Combat] Setting boss as defeated');
+            setBossDefeated(true);
+            setBossPrompt('');
+            setBossAnswer('');
+            setMessage('✓ Boss defeated. Dungeon mastered.');
+            setShowCorrectFeedback(false);
+            setIsGradingAnswer(false);
+            console.log('[Boss Combat] Boss defeat state updates queued');
+          } catch (error) {
+            console.error('[Boss Combat] Error in defeat callback:', error);
+            setIsGradingAnswer(false);
+          }
         }, 500);
         return;
       }
@@ -366,19 +375,28 @@ const Game = ({ level, studentId }: GameProps) => {
       // Correct but boss still has more questions - advance
       releaseGradingLock = false;
       queueUiTimeout(() => {
-        if (playerHp <= 0) {
-          setIsGradingAnswer(false);
-          return;
-        }
+        try {
+          console.log('[Boss Combat] Advance timeout callback executing...');
+          if (playerHp <= 0) {
+            console.log('[Boss Combat] Player dead during advance, aborting');
+            setIsGradingAnswer(false);
+            return;
+          }
 
-        const nextIndex = bossQuestionIndex + 1;
-        setBossQuestionIndex(nextIndex);
-        setBossPrompt(bossQuestions[nextIndex]);
-        setBossAnswer('');
-        console.log('[Boss Combat] Advanced to question ' + (nextIndex + 1) + '/' + bossQuestions.length);
-        setMessage(`✓ Correct. Boss challenged (${nextIndex + 1}/${bossQuestions.length}).`);
-        setShowCorrectFeedback(false);
-        setIsGradingAnswer(false);
+          const nextIndex = bossQuestionIndex + 1;
+          console.log('[Boss Combat] Advancing from question', bossQuestionIndex, 'to', nextIndex);
+          setBossQuestionIndex(nextIndex);
+          setBossPrompt(bossQuestions[nextIndex]);
+          setBossAnswer('');
+          console.log('[Boss Combat] Advanced to question ' + (nextIndex + 1) + '/' + bossQuestions.length);
+          setMessage(`✓ Correct. Boss challenged (${nextIndex + 1}/${bossQuestions.length}).`);
+          setShowCorrectFeedback(false);
+          setIsGradingAnswer(false);
+          console.log('[Boss Combat] Question advance completed');
+        } catch (error) {
+          console.error('[Boss Combat] Error in advance callback:', error);
+          setIsGradingAnswer(false);
+        }
       }, 400);
     } catch (error) {
       console.error('[Boss Combat] Grading error:', error);
